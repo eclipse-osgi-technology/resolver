@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/*********************************************************************
+* Copyright (c) 2026 Contributors to the Eclipse Foundation.
+*
+* This program and the accompanying materials are made
+* available under the terms of the Eclipse Public License 2.0
+* which is available at https://www.eclipse.org/legal/epl-2.0/
+*
+* SPDX-License-Identifier: EPL-2.0
+**********************************************************************/
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.eclipse.osgi-technology</groupId>
+    <artifactId>org.eclipse.osgi-technology.pom.parent</artifactId>
+    <version>0.0.1</version>
+  </parent>
+
+  <groupId>org.eclipse.osgi-technology.resolver</groupId>
+  <artifactId>resolver</artifactId>
+  <version>${revision}</version>
+  <packaging>pom</packaging>
+
+  <name>Reactor for resolver</name>
+  <description>Vendor neutral implementation of the OSGi Resolver Service Specification,
+    tools for building resolvers and a test-suite to compare implementations</description>
+  <url>https://github.com/eclipse-osgi-technology/resolver</url>
+
+  <!-- modules will be added as the project evolves -->
+  <modules>
+  </modules>
+
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>https://github.com/eclipse-osgi-technology/resolver/issues</url>
+  </issueManagement>
+
+  <properties>
+    <java.version>25</java.version>
+    <java.release>25</java.release>
+    <maven.compiler.release>25</maven.compiler.release>
+  </properties>
+</project>
