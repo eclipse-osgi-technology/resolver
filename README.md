@@ -25,8 +25,13 @@ Our test suite is intended to be usable against these implementations as well, s
 
 ## Repository status
 
-The repository is in its initial setup phase.
-Structure, build instructions and usage documentation will be added as the project evolves.
+The repository is in its initial setup phase and grows module by module.
+
+| Module               | Description                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| [verifier](verifier) | Resolver independent checks that a resolve result is well formed and class space consistent |
+
+Build with JDK 25 and `mvn verify`.
 
 ## Contributing
 
