@@ -10,13 +10,17 @@
 package org.eclipse.osgi.technology.resolver.testsuite;
 
 import aQute.bnd.header.Attrs;
+import aQute.bnd.header.Parameters;
 import io.cucumber.java.en.Given;
 
 /**
  * Cucumber glue steps to describe bundles. A bundle is started with "there is
  * bundle", all following steps starting with "it" describe that bundle until
  * the next bundle is started or a resolve is performed. Every step describes
- * one complete clause of the manifest.
+ * one complete clause of the manifest. Concepts of the specification have
+ * their own wording, everything else can be added with a trailing
+ * {@code with "<attributes>"} that uses the syntax of a manifest clause, e.g.
+ * {@code color=red;mandatory:=color}.
  */
 public class BundleSteps {
 
@@ -30,6 +34,14 @@ public class BundleSteps {
      */
     public BundleSteps(TestWorld world) {
         this.world = world;
+    }
+
+    /**
+     * Parses the attributes and directives of a manifest clause, e.g.
+     * {@code a=b;c:=d}, which OSGiHeader.parseProperties rejects.
+     */
+    private static Attrs attrs(String clauseAttributes) {
+        return new Parameters("x;" + clauseAttributes).get("x");
     }
 
     private BundleBuilder bundle() {
@@ -71,6 +83,18 @@ public class BundleSteps {
     }
 
     /**
+     * Exports a package with attributes and directives.
+     *
+     * @param name       the package name
+     * @param attributes the attributes and directives in the syntax of a
+     *                   manifest clause
+     */
+    @Given("it exports package {string} with {string}")
+    public void itExportsPackageWith(String name, String attributes) {
+        bundle().addExportPackage(name, attrs(attributes));
+    }
+
+    /**
      * Imports a package of any version.
      *
      * @param name the package name
@@ -78,6 +102,50 @@ public class BundleSteps {
     @Given("it imports package {string}")
     public void itImportsPackage(String name) {
         bundle().addImportPackage(name, new Attrs());
+    }
+
+    /**
+     * Imports a package with attributes and directives.
+     *
+     * @param name       the package name
+     * @param attributes the attributes and directives in the syntax of a
+     *                   manifest clause
+     */
+    @Given("it imports package {string} with {string}")
+    public void itImportsPackageWith(String name, String attributes) {
+        bundle().addImportPackage(name, attrs(attributes));
+    }
+
+    /**
+     * Imports a package optionally, the bundle resolves without an exporter.
+     *
+     * @param name the package name
+     */
+    @Given("it optionally imports package {string}")
+    public void itOptionallyImportsPackage(String name) {
+        bundle().addImportPackage(name, new Attrs().with("resolution:", "optional"));
+    }
+
+    /**
+     * Imports a package from a specific exporting bundle.
+     *
+     * @param name   the package name
+     * @param bundle the symbolic name of the bundle that has to export it
+     */
+    @Given("it imports package {string} from bundle {string}")
+    public void itImportsPackageFromBundle(String name, String bundle) {
+        bundle().addImportPackage(name, new Attrs().with("bundle-symbolic-name", bundle));
+    }
+
+    /**
+     * Imports a package dynamically, which is only wired on request and not
+     * when resolving.
+     *
+     * @param name the package name
+     */
+    @Given("it dynamically imports package {string}")
+    public void itDynamicallyImportsPackage(String name) {
+        bundle().addDynamicImportPackage(name);
     }
 
     /**

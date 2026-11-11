@@ -21,6 +21,7 @@ import org.osgi.resource.Resource;
 import org.osgi.resource.Wire;
 import org.osgi.service.resolver.ResolutionException;
 
+import aQute.bnd.osgi.resource.ResourceUtils;
 import io.cucumber.java.After;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -122,6 +123,35 @@ public class ResolveSteps {
     public void isResolved(BundleRef ref) {
         theResolutionSucceeds();
         assertThat(result).containsKey(world.find(ref));
+    }
+
+    /**
+     * Asserts that a bundle is not part of the result of a successful resolve.
+     *
+     * @param ref the bundle
+     */
+    @Then("{bundle} is not resolved")
+    public void isNotResolved(BundleRef ref) {
+        // a failed resolve must not satisfy this, it has its own assertion
+        theResolutionSucceeds();
+        assertThat(result).doesNotContainKey(world.find(ref));
+    }
+
+    /**
+     * Asserts which bundles are part of the result, no more and no fewer.
+     *
+     * @param names the symbolic names separated by comma, an entry like
+     *              {@code name 1.0.0} tells apart bundles of the same name
+     */
+    @Then("the resolved bundles are exactly {string}")
+    public void theResolvedBundlesAreExactly(String names) {
+        theResolutionSucceeds();
+        List<String> expected = names.isEmpty() ? List.of() : List.of(names.split("\\s*,\\s*"));
+        List<String> actual = result.keySet().stream().map(r -> {
+            String versioned = ResourceUtils.getIdentity(r) + " " + ResourceUtils.getVersion(r);
+            return expected.contains(versioned) ? versioned : ResourceUtils.getIdentity(r);
+        }).toList();
+        assertThat(actual).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     /**

@@ -41,6 +41,7 @@ And bundle "importer" is wired to bundle "exporter" for package "foo"
 - Bundles are never added to a set explicitly, starting the next bundle or resolving completes the current one.
 - All bundles are available to the resolver, the ones named in the `I resolve` step are mandatory.
 - Every step describes one complete clause of the manifest.
+- Attributes and directives that have no wording of their own are added with a trailing `with "<attributes>"` in the syntax of a manifest clause, e.g. `it exports package "foo" with "color=red;mandatory:=color"`.
 
 ## How to run the suite against a resolver
 
