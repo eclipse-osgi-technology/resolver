@@ -9,6 +9,7 @@
 #
 # Specification (importing and exporting the same package):
 #   https://docs.osgi.org/specification/osgi.core/8.0.0/framework.module.html#framework.module-import.export.same.package
+#   https://docs.osgi.org/specification/osgi.core/8.0.0/framework.module.html#framework.module.requirebundle
 Feature: Substitution of exported packages
   A bundle that exports and imports the same package lets the resolver decide where the package comes from.
   If the import is wired to another bundle, the own export is discarded (substituted) and everybody that gets the package through this bundle gets it from the other bundle too.
@@ -148,3 +149,59 @@ Feature: Substitution of exported packages
     And it imports package "api" in version range "[1.1,1.2)"
     When I resolve bundle "d"
     Then the resolution fails because of a uses constraint violation on package "api" for bundle "d"
+
+  Rule: A bundle that requires a bundle sees the package the required bundle is wired to
+    If an exported package of a required bundle is substituted by an import, the requiring bundles are wired to the same exported package that the required bundle is wired to.
+    The same holds for bundles that reach it through reexport.
+
+    Scenario: A requiring bundle sees the export of the required bundle if it is kept
+      Given there is bundle "a"
+      And it exports package "p" in version "1.1.0"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "b"
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "d"
+      And it requires bundle "a"
+      When I resolve bundle "d" and bundle "b"
+      Then the resolution succeeds
+      And bundle "d" sees package "p" from bundle "a"
+
+    Scenario: A requiring bundle sees the substituted package of the required bundle
+      Given there is bundle "a"
+      And it exports package "p" in version "1.0.0"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "b"
+      And it exports package "p" in version "1.1.0"
+      And there is bundle "d"
+      And it requires bundle "a"
+      When I resolve bundle "d"
+      Then the resolution succeeds
+      And bundle "a" substitutes its export of package "p"
+      And bundle "d" sees package "p" from bundle "b"
+
+    Scenario: A reexporting bundle passes on the substituted package
+      Given there is bundle "a"
+      And it exports package "p" in version "1.0.0"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "b"
+      And it exports package "p" in version "1.1.0"
+      And there is bundle "mid"
+      And it requires bundle "a" and reexports it
+      And there is bundle "top"
+      And it requires bundle "mid"
+      When I resolve bundle "top"
+      Then the resolution succeeds
+      And bundle "top" sees package "p" from bundle "b"
+
+    Scenario: An export with a mandatory attribute is substituted by an import without it
+      Given there is bundle "a"
+      And it exports package "p" in version "1.0.0" with "x=1;mandatory:=x"
+      And it imports package "p"
+      And there is bundle "b"
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "d"
+      And it requires bundle "a"
+      When I resolve bundle "d"
+      Then the resolution succeeds
+      And bundle "a" substitutes its export of package "p"
+      And bundle "d" sees package "p" from bundle "b"
