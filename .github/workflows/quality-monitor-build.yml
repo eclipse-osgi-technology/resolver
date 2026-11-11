@@ -2,6 +2,9 @@
 # Runs after the build workflow on the base repository with write
 # permissions, so it also works for PRs from forks. It must never check out
 # or execute code of the PR: it only reads the report artifacts of the build.
+# The file name and the artifact name `quality-reports` are what the delta
+# feature of the action expects: it compares a PR with the last such artifact
+# of the main branch.
 name: quality-monitor
 on:
   workflow_run:
@@ -32,6 +35,15 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # reference of the delta metrics of later PRs
+      - name: Upload reference reports
+        if: github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: quality-reports
+          path: reports
+          if-no-files-found: ignore
+
       - name: PR number
         id: pr
         run: |
@@ -49,6 +61,7 @@ jobs:
           sha: ${{ github.event.workflow_run.head_sha }}
           config: ${{ steps.config.outputs.json }}
           pr-number: ${{ steps.pr.outputs.number }}
+          enable-delta: true
           comments-strategy: REMOVE
           show-headers: true
           title-metric: none
