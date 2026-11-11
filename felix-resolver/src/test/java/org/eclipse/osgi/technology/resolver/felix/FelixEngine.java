@@ -20,6 +20,7 @@ import org.apache.felix.resolver.ResolverImpl;
 import org.apache.felix.resolver.reason.ReasonException;
 import org.apache.felix.resolver.reason.ReasonException.Reason;
 import org.eclipse.osgi.technology.resolver.testsuite.ResolverEngine;
+import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Namespace;
 import org.osgi.resource.Resource;
 import org.osgi.resource.Wire;
@@ -77,5 +78,12 @@ public class FelixEngine implements ResolverEngine {
             }
         }
         assertThat(reasons).as("reasons of the failure").contains(Reason.UseConstraint);
+    }
+
+    /** Felix reports the unsatisfied import and not why no export satisfies it. */
+    @Override
+    public void assertImportHiddenBySubstitution(ResolutionException failure, Resource importer,
+            String packageName) {
+        assertUnsatisfiedRequirement(failure, importer, PackageNamespace.PACKAGE_NAMESPACE, packageName);
     }
 }

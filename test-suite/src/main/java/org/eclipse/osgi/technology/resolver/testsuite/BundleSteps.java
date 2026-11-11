@@ -187,6 +187,18 @@ public class BundleSteps {
     }
 
     /**
+     * Imports a package in a version range, but the bundle resolves without it.
+     *
+     * @param name  the package name
+     * @param range the version range, a plain version means that version or
+     *              higher
+     */
+    @Given("it optionally imports package {string} in version range {string}")
+    public void itOptionallyImportsPackageInRange(String name, String range) {
+        bundle().addImportPackage(name, new Attrs().with("version", range).with("resolution:", "optional"));
+    }
+
+    /**
      * Requires a bundle of any version.
      *
      * @param name the symbolic name of the required bundle
