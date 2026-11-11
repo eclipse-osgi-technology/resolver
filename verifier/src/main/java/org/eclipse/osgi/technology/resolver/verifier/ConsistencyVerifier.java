@@ -101,15 +101,15 @@ public final class ConsistencyVerifier {
         while (!pending.isEmpty()) {
             Capability current = pending.iterator().next();
             pending.remove(current);
-            if (!visited.add(current) || current.getResource().equals(consumer)) {
+            if (!visited.add(current) || space.owner(current).equals(consumer)) {
                 continue;
             }
             for (String used : uses(current)) {
-                Set<Capability> implied = impliedSources(current.getResource(), used);
+                Set<Capability> implied = impliedSources(space.owner(current), used);
                 for (Set<Capability> actual : actualSources(consumer, used)) {
                     if (!implied.isEmpty() && !actual.isEmpty() && !compatible(implied, actual)) {
                         violations.add(describe(consumer) + " sees package " + used + " from " + describe(actual)
-                                + " but " + reason + " from " + describe(root.getResource()) + " implies "
+                                + " but " + reason + " from " + describe(space.owner(root)) + " implies "
                                 + describe(implied));
                     }
                 }
@@ -133,7 +133,7 @@ public final class ConsistencyVerifier {
         Set<Object> keys = new HashSet<>();
         for (Capability capability : capabilities) {
             if (PackageNamespace.PACKAGE_NAMESPACE.equals(capability.getNamespace())) {
-                keys.add(Arrays.asList(capability.getResource(), ClassSpace.packageName(capability)));
+                keys.add(Arrays.asList(space.owner(capability), ClassSpace.packageName(capability)));
             } else {
                 keys.add(capability);
             }
@@ -206,7 +206,7 @@ public final class ConsistencyVerifier {
 
     private String describe(Set<Capability> capabilities) {
         List<String> names = new ArrayList<>();
-        capabilities.forEach(c -> names.add(describe(c.getResource())));
+        capabilities.forEach(c -> names.add(describe(space.owner(c))));
         return names.toString();
     }
 }

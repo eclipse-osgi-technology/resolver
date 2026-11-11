@@ -9,7 +9,9 @@
  *******************************************************************************/
 package org.eclipse.osgi.technology.resolver.verifier;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.osgi.framework.namespace.BundleNamespace;
+import org.osgi.framework.namespace.HostNamespace;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Resource;
@@ -28,11 +31,14 @@ import org.osgi.resource.Wire;
  * <p>
  * A resource sees a package either from its imports, from required bundles
  * (including the bundles they reexport) or from its own export, in that order
- * (OSGi Core 3.7.5 "Package Constraints").
+ * (OSGi Core 3.7.5 "Package Constraints"). The packages of a fragment belong to
+ * the host it is attached to.
  */
 public final class ClassSpace {
 
     private final Map<Resource, List<Wire>> result;
+    private final Map<Resource, List<Resource>> fragments = new HashMap<>();
+    private final Map<Capability, Resource> hosts = new HashMap<>();
 
     /**
      * Creates the class space of a result.
@@ -41,6 +47,33 @@ public final class ClassSpace {
      */
     public ClassSpace(Map<Resource, List<Wire>> result) {
         this.result = result;
+        result.forEach((resource, wires) -> wires.stream()
+                .filter(w -> HostNamespace.HOST_NAMESPACE.equals(w.getCapability().getNamespace()))
+                .forEach(w -> {
+                    Resource host = w.getProvider();
+                    fragments.computeIfAbsent(host, k -> new ArrayList<>()).add(resource);
+                    resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE).forEach(c -> hosts.put(c, host));
+                }));
+    }
+
+    /**
+     * The resource a capability is visible through: the resource itself, or
+     * the host if it is provided by an attached fragment.
+     *
+     * @param capability the capability
+     * @return the resource that provides the capability
+     */
+    public Resource owner(Capability capability) {
+        return hosts.getOrDefault(capability, capability.getResource());
+    }
+
+    /** The package capabilities of a resource and of the fragments attached to it. */
+    private List<Capability> packageCapabilities(Resource resource) {
+        List<Capability> capabilities = new ArrayList<>(resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE));
+        for (Resource fragment : fragments.getOrDefault(resource, Collections.emptyList())) {
+            capabilities.addAll(fragment.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE));
+        }
+        return capabilities;
     }
 
     /**
@@ -59,7 +92,7 @@ public final class ClassSpace {
                 exportedThroughBundle(wire.getProvider(), names, new HashSet<>());
             }
         }
-        for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
+        for (Capability capability : packageCapabilities(resource)) {
             names.add(packageName(capability));
         }
         return names;
@@ -97,7 +130,7 @@ public final class ClassSpace {
     public Set<Resource> sources(Resource resource, String packageName) {
         Set<Resource> sources = new LinkedHashSet<>();
         for (Capability provider : providers(resource, packageName)) {
-            sourcesOf(provider, new HashSet<>()).forEach(c -> sources.add(c.getResource()));
+            sourcesOf(provider, new HashSet<>()).forEach(c -> sources.add(owner(c)));
         }
         return sources;
     }
@@ -113,7 +146,7 @@ public final class ClassSpace {
         if (!PackageNamespace.PACKAGE_NAMESPACE.equals(capability.getNamespace())) {
             sources.add(capability);
         } else if (visiting.add(capability)) {
-            Resource exporter = capability.getResource();
+            Resource exporter = owner(capability);
             String name = packageName(capability);
             Set<Capability> imported = imported(exporter, name);
             if (!imported.isEmpty()) {
@@ -141,7 +174,7 @@ public final class ClassSpace {
     Set<Capability> exported(Resource resource, String packageName) {
         Set<Capability> exported = new LinkedHashSet<>();
         if (imported(resource, packageName).isEmpty()) {
-            for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
+            for (Capability capability : packageCapabilities(resource)) {
                 if (packageName.equals(packageName(capability))) {
                     exported.add(capability);
                 }
@@ -164,7 +197,7 @@ public final class ClassSpace {
     private void requiredExports(Resource required, String packageName, Set<Capability> providers,
             Set<Resource> visited) {
         if (visited.add(required)) {
-            for (Capability capability : required.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
+            for (Capability capability : packageCapabilities(required)) {
                 if (packageName.equals(packageName(capability))) {
                     providers.add(capability);
                 }
@@ -179,7 +212,7 @@ public final class ClassSpace {
 
     private void exportedThroughBundle(Resource required, Set<String> names, Set<Resource> visited) {
         if (visited.add(required)) {
-            for (Capability capability : required.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
+            for (Capability capability : packageCapabilities(required)) {
                 names.add(packageName(capability));
             }
             for (Wire wire : wires(required)) {
