@@ -159,4 +159,47 @@ public class BundleSteps {
     public void itImportsPackageInRange(String name, String range) {
         bundle().addImportPackage(name, new Attrs().with("version", range));
     }
+
+    /**
+     * Requires a bundle of any version.
+     *
+     * @param name the symbolic name of the required bundle
+     */
+    @Given("it requires bundle {string}")
+    public void itRequiresBundle(String name) {
+        bundle().addRequireBundle(name, new Attrs());
+    }
+
+    /**
+     * Requires a bundle in a version range.
+     *
+     * @param name  the symbolic name of the required bundle
+     * @param range the version range, a plain version means that version or
+     *              higher
+     */
+    @Given("it requires bundle {string} in version range {string}")
+    public void itRequiresBundleInRange(String name, String range) {
+        bundle().addRequireBundle(name, new Attrs().with("bundle-version", range));
+    }
+
+    /**
+     * Requires a bundle and makes its exports visible to the bundles that
+     * require this one.
+     *
+     * @param name the symbolic name of the required bundle
+     */
+    @Given("it requires bundle {string} and reexports it")
+    public void itRequiresBundleAndReexportsIt(String name) {
+        bundle().addRequireBundle(name, new Attrs().with("visibility:", "reexport"));
+    }
+
+    /**
+     * Requires a bundle optionally, the bundle resolves without it.
+     *
+     * @param name the symbolic name of the required bundle
+     */
+    @Given("it optionally requires bundle {string}")
+    public void itOptionallyRequiresBundle(String name) {
+        bundle().addRequireBundle(name, new Attrs().with("resolution:", "optional"));
+    }
 }

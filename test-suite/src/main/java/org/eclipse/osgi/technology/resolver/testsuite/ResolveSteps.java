@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.eclipse.osgi.technology.resolver.verifier.ConsistencyVerifier;
 import org.eclipse.osgi.technology.resolver.verifier.WiringVerifier;
+import org.osgi.framework.namespace.BundleNamespace;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Resource;
 import org.osgi.resource.Wire;
@@ -109,9 +110,24 @@ public class ResolveSteps {
      */
     @Then("the resolution fails because {bundle} has an unsatisfied import of package {string}")
     public void failsBecauseOfUnsatisfiedImport(BundleRef ref, String packageName) {
+        unsatisfied(ref, PackageNamespace.PACKAGE_NAMESPACE, packageName);
+    }
+
+    /**
+     * Asserts that the resolve failed because a bundle requires a bundle that
+     * is not available.
+     *
+     * @param ref  the bundle with the unsatisfied requirement
+     * @param name the symbolic name of the required bundle
+     */
+    @Then("the resolution fails because {bundle} has an unsatisfied requirement of bundle {string}")
+    public void failsBecauseOfUnsatisfiedRequireBundle(BundleRef ref, String name) {
+        unsatisfied(ref, BundleNamespace.BUNDLE_NAMESPACE, name);
+    }
+
+    private void unsatisfied(BundleRef ref, String namespace, String name) {
         assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
-        world.engine().assertUnsatisfiedRequirement(failure, world.find(ref),
-                PackageNamespace.PACKAGE_NAMESPACE, packageName);
+        world.engine().assertUnsatisfiedRequirement(failure, world.find(ref), namespace, name);
     }
 
     /**
@@ -168,6 +184,34 @@ public class ResolveSteps {
                 .anyMatch(w -> w.getProvider().equals(world.find(provider))
                         && PackageNamespace.PACKAGE_NAMESPACE.equals(w.getCapability().getNamespace())
                         && packageName.equals(w.getCapability().getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)));
+    }
+
+    /**
+     * Asserts that a bundle is wired to another bundle, whatever the wire is
+     * for.
+     *
+     * @param requirer the requiring bundle
+     * @param provider the providing bundle
+     */
+    @Then("{bundle} is wired to {bundle}")
+    public void isWiredTo(BundleRef requirer, BundleRef provider) {
+        assertThat(wires(requirer)).as("wires of %s", requirer)
+                .anyMatch(w -> w.getProvider().equals(world.find(provider)));
+    }
+
+    /**
+     * Asserts that a bundle is wired to a capability of another bundle in a
+     * namespace.
+     *
+     * @param requirer  the requiring bundle
+     * @param provider  the providing bundle
+     * @param namespace the namespace of the capability
+     */
+    @Then("{bundle} is wired to {bundle} for capability in namespace {string}")
+    public void isWiredToForNamespace(BundleRef requirer, BundleRef provider, String namespace) {
+        assertThat(wires(requirer)).as("wires of %s", requirer)
+                .anyMatch(w -> w.getProvider().equals(world.find(provider))
+                        && namespace.equals(w.getCapability().getNamespace()));
     }
 
     /**
