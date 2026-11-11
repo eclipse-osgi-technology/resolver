@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.osgi.technology.resolver.verifier.ClassSpace;
 import org.eclipse.osgi.technology.resolver.verifier.ConsistencyVerifier;
 import org.eclipse.osgi.technology.resolver.verifier.WiringVerifier;
 import org.osgi.framework.namespace.BundleNamespace;
@@ -247,6 +248,21 @@ public class ResolveSteps {
     @Then("{bundle} has {int} wire(s)")
     public void hasWires(BundleRef ref, int count) {
         assertThat(wires(ref)).as("wires of %s", ref).hasSize(count);
+    }
+
+    /**
+     * Asserts that a bundle sees a package, through an import or a required
+     * bundle or its own export, from exactly one bundle.
+     *
+     * @param ref         the bundle that sees the package
+     * @param packageName the name of the package
+     * @param provider    the only bundle the package comes from
+     */
+    @Then("{bundle} sees package {string} from {bundle}")
+    public void seesPackageFrom(BundleRef ref, String packageName, BundleRef provider) {
+        wires(ref);
+        assertThat(new ClassSpace(result).sources(world.find(ref), packageName))
+                .as("providers of %s visible to %s", packageName, ref).containsExactly(world.find(provider));
     }
 
     private List<Wire> wires(BundleRef ref) {

@@ -11,7 +11,6 @@ package org.eclipse.osgi.technology.resolver.verifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -32,8 +31,7 @@ import org.osgi.resource.Wire;
  * candidates or permutations and never searches for a solution. It only
  * reports inconsistencies.
  * <p>
- * A resource sees a package either from its imports, from required bundles
- * (including reexports) or from its own export, in that order. A capability
+ * A resource sees a package as described by {@link ClassSpace}. A capability
  * that "uses" another package implies that every resource consuming the
  * capability sees that package from the same source as the provider of the
  * capability does, the implication is transitive.
@@ -41,6 +39,7 @@ import org.osgi.resource.Wire;
 public final class ConsistencyVerifier {
 
     private final Map<Resource, List<Wire>> result;
+    private final ClassSpace space;
 
     /**
      * Creates an verifier for a result.
@@ -49,6 +48,7 @@ public final class ConsistencyVerifier {
      */
     public ConsistencyVerifier(Map<Resource, List<Wire>> result) {
         this.result = result;
+        this.space = new ClassSpace(result);
     }
 
     /**
@@ -60,12 +60,12 @@ public final class ConsistencyVerifier {
         List<String> violations = new ArrayList<>();
         for (Resource resource : result.keySet()) {
             checkImportsAreUnique(resource, violations);
-            for (String packageName : visiblePackages(resource)) {
-                for (Capability capability : providersSeenBy(resource, packageName)) {
+            for (String packageName : space.packages(resource)) {
+                for (Capability capability : space.providers(resource, packageName)) {
                     checkUses(resource, packageName, capability, violations);
                 }
             }
-            for (Wire wire : wires(resource)) {
+            for (Wire wire : space.wires(resource)) {
                 String namespace = wire.getCapability().getNamespace();
                 if (!PackageNamespace.PACKAGE_NAMESPACE.equals(namespace)
                         && !BundleNamespace.BUNDLE_NAMESPACE.equals(namespace)) {
@@ -78,16 +78,14 @@ public final class ConsistencyVerifier {
 
     private void checkImportsAreUnique(Resource resource, List<String> violations) {
         Map<String, Set<Capability>> imported = new HashMap<>();
-        for (Wire wire : wires(resource)) {
-            if (isImport(resource, wire)) {
-                imported.computeIfAbsent(packageName(wire.getCapability()), k -> new LinkedHashSet<>())
+        for (Wire wire : space.wires(resource)) {
+            if (ClassSpace.isImport(resource, wire)) {
+                imported.computeIfAbsent(ClassSpace.packageName(wire.getCapability()), k -> new LinkedHashSet<>())
                         .add(wire.getCapability());
             }
         }
         imported.forEach((name, caps) -> {
-            Set<Capability> sources = new LinkedHashSet<>();
-            caps.forEach(c -> sources.addAll(sourcesOf(c, new HashSet<>())));
-            if (caps.size() > 1 && !allCompatible(caps, sources)) {
+            if (caps.size() > 1 && !allCompatible(caps)) {
                 violations.add(describe(resource) + " imports package " + name + " from different sources");
             }
         });
@@ -99,7 +97,7 @@ public final class ConsistencyVerifier {
      */
     private void checkUses(Resource consumer, String reason, Capability root, List<String> violations) {
         Set<Capability> visited = new HashSet<>();
-        Set<Capability> pending = new LinkedHashSet<>(sourcesOf(root, new HashSet<>()));
+        Set<Capability> pending = new LinkedHashSet<>(space.sourcesOf(root, new HashSet<>()));
         while (!pending.isEmpty()) {
             Capability current = pending.iterator().next();
             pending.remove(current);
@@ -135,7 +133,7 @@ public final class ConsistencyVerifier {
         Set<Object> keys = new HashSet<>();
         for (Capability capability : capabilities) {
             if (PackageNamespace.PACKAGE_NAMESPACE.equals(capability.getNamespace())) {
-                keys.add(Arrays.asList(capability.getResource(), packageName(capability)));
+                keys.add(Arrays.asList(capability.getResource(), ClassSpace.packageName(capability)));
             } else {
                 keys.add(capability);
             }
@@ -143,91 +141,30 @@ public final class ConsistencyVerifier {
         return keys;
     }
 
-    private boolean allCompatible(Set<Capability> caps, Set<Capability> sources) {
-        Set<Capability> first = sourcesOf(caps.iterator().next(), new HashSet<>());
+    private boolean allCompatible(Set<Capability> caps) {
+        Set<Capability> first = space.sourcesOf(caps.iterator().next(), new HashSet<>());
         for (Capability cap : caps) {
-            if (!compatible(first, sourcesOf(cap, new HashSet<>()))) {
+            if (!compatible(first, space.sourcesOf(cap, new HashSet<>()))) {
                 return false;
             }
         }
         return true;
     }
 
-    /**
-     * The capabilities a package capability really consists of: itself plus
-     * what its bundle gets for the same package through Require-Bundle (split
-     * packages), or, if the bundle substitutes the export, what it imports.
-     */
-    private Set<Capability> sourcesOf(Capability capability, Set<Capability> visiting) {
-        Set<Capability> sources = new LinkedHashSet<>();
-        if (!PackageNamespace.PACKAGE_NAMESPACE.equals(capability.getNamespace())) {
-            sources.add(capability);
-        } else if (visiting.add(capability)) {
-            Resource exporter = capability.getResource();
-            String name = packageName(capability);
-            Set<Capability> imported = importedCapabilities(exporter, name);
-            if (!imported.isEmpty()) {
-                imported.forEach(c -> sources.addAll(sourcesOf(c, visiting)));
-            } else {
-                sources.add(capability);
-                Set<Capability> required = new LinkedHashSet<>();
-                for (Wire wire : wires(exporter)) {
-                    if (isBundleWire(wire)) {
-                        requiredExports(wire.getProvider(), name, required, new HashSet<>());
-                    }
-                }
-                required.forEach(c -> sources.addAll(sourcesOf(c, visiting)));
-            }
-        }
-        return sources;
-    }
-
-    private Set<Capability> importedCapabilities(Resource resource, String packageName) {
-        Set<Capability> imported = new LinkedHashSet<>();
-        for (Wire wire : wires(resource)) {
-            if (isImport(resource, wire) && packageName.equals(packageName(wire.getCapability()))) {
-                imported.add(wire.getCapability());
-            }
-        }
-        return imported;
-    }
-
-    private Set<Capability> ownExports(Resource resource, String packageName) {
-        Set<Capability> own = new LinkedHashSet<>();
-        if (importedCapabilities(resource, packageName).isEmpty()) {
-            for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                if (packageName.equals(packageName(capability))) {
-                    own.add(capability);
-                }
-            }
-        }
-        return own;
-    }
-
-    private Set<Capability> requiredCapabilities(Resource resource, String packageName) {
-        Set<Capability> required = new LinkedHashSet<>();
-        for (Wire wire : wires(resource)) {
-            if (isBundleWire(wire)) {
-                requiredExports(wire.getProvider(), packageName, required, new HashSet<>());
-            }
-        }
-        return required;
-    }
-
     private Set<Capability> union(Set<Capability> capabilities) {
         Set<Capability> sources = new LinkedHashSet<>();
-        capabilities.forEach(c -> sources.addAll(sourcesOf(c, new HashSet<>())));
+        capabilities.forEach(c -> sources.addAll(space.sourcesOf(c, new HashSet<>())));
         return sources;
     }
 
     /** What a resource provides for a package to whoever uses it: its export, else required, else imported. */
     private Set<Capability> impliedSources(Resource resource, String packageName) {
-        Set<Capability> capabilities = ownExports(resource, packageName);
+        Set<Capability> capabilities = space.exported(resource, packageName);
         if (capabilities.isEmpty()) {
-            capabilities = requiredCapabilities(resource, packageName);
+            capabilities = space.required(resource, packageName);
         }
         if (capabilities.isEmpty()) {
-            capabilities = importedCapabilities(resource, packageName);
+            capabilities = space.imported(resource, packageName);
         }
         return union(capabilities);
     }
@@ -235,88 +172,18 @@ public final class ConsistencyVerifier {
     /** The separately checked views of a package a resource has: through its export and through imports or required bundles. */
     private List<Set<Capability>> actualSources(Resource resource, String packageName) {
         List<Set<Capability>> views = new ArrayList<>();
-        Set<Capability> own = ownExports(resource, packageName);
+        Set<Capability> own = space.exported(resource, packageName);
         if (!own.isEmpty()) {
             views.add(union(own));
         }
-        Set<Capability> other = importedCapabilities(resource, packageName);
+        Set<Capability> other = space.imported(resource, packageName);
         if (other.isEmpty()) {
-            other = requiredCapabilities(resource, packageName);
+            other = space.required(resource, packageName);
         }
         if (!other.isEmpty()) {
             views.add(union(other));
         }
         return views;
-    }
-
-    /** The packages the resource can see. */
-    private Set<String> visiblePackages(Resource resource) {
-        Set<String> names = new LinkedHashSet<>();
-        for (Wire wire : wires(resource)) {
-            if (isImport(resource, wire)) {
-                names.add(packageName(wire.getCapability()));
-            } else if (isBundleWire(wire)) {
-                exportedThroughBundle(wire.getProvider(), names, new HashSet<>());
-            }
-        }
-        for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-            names.add(packageName(capability));
-        }
-        return names;
-    }
-
-    private void exportedThroughBundle(Resource required, Set<String> names, Set<Resource> visited) {
-        if (visited.add(required)) {
-            for (Capability capability : required.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                names.add(packageName(capability));
-            }
-            for (Wire wire : wires(required)) {
-                if (isReexport(wire)) {
-                    exportedThroughBundle(wire.getProvider(), names, visited);
-                }
-            }
-        }
-    }
-
-    /** The capabilities that make the package visible to the resource (not yet reduced to their origin). */
-    private Set<Capability> providersSeenBy(Resource resource, String packageName) {
-        Set<Capability> providers = new LinkedHashSet<>();
-        for (Wire wire : wires(resource)) {
-            if (isImport(resource, wire) && packageName.equals(packageName(wire.getCapability()))) {
-                providers.add(wire.getCapability());
-            }
-        }
-        if (providers.isEmpty()) {
-            for (Wire wire : wires(resource)) {
-                if (isBundleWire(wire)) {
-                    requiredExports(wire.getProvider(), packageName, providers, new HashSet<>());
-                }
-            }
-        }
-        if (providers.isEmpty()) {
-            for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                if (packageName.equals(packageName(capability))) {
-                    providers.add(capability);
-                }
-            }
-        }
-        return providers;
-    }
-
-    private void requiredExports(Resource required, String packageName, Set<Capability> providers,
-            Set<Resource> visited) {
-        if (visited.add(required)) {
-            for (Capability capability : required.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                if (packageName.equals(packageName(capability))) {
-                    providers.add(capability);
-                }
-            }
-            for (Wire wire : wires(required)) {
-                if (isReexport(wire)) {
-                    requiredExports(wire.getProvider(), packageName, providers, visited);
-                }
-            }
-        }
     }
 
     private List<String> uses(Capability capability) {
@@ -330,28 +197,6 @@ public final class ConsistencyVerifier {
             }
         }
         return packages;
-    }
-
-    private boolean isImport(Resource resource, Wire wire) {
-        return PackageNamespace.PACKAGE_NAMESPACE.equals(wire.getCapability().getNamespace())
-                && !wire.getProvider().equals(resource);
-    }
-
-    private boolean isBundleWire(Wire wire) {
-        return BundleNamespace.BUNDLE_NAMESPACE.equals(wire.getCapability().getNamespace());
-    }
-
-    private boolean isReexport(Wire wire) {
-        return isBundleWire(wire) && BundleNamespace.VISIBILITY_REEXPORT
-                .equals(wire.getRequirement().getDirectives().get(BundleNamespace.REQUIREMENT_VISIBILITY_DIRECTIVE));
-    }
-
-    private String packageName(Capability capability) {
-        return (String) capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE);
-    }
-
-    private List<Wire> wires(Resource resource) {
-        return result.getOrDefault(resource, Collections.emptyList());
     }
 
     private String describe(Resource resource) {
