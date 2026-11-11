@@ -86,13 +86,42 @@ public class ResolveSteps {
         resolve(List.of(a, b));
     }
 
+    /**
+     * Resolves one bundle that has to be resolved and one that is resolved if
+     * possible.
+     *
+     * @param mandatory the bundle that has to be resolved
+     * @param optional  the bundle that is resolved if possible
+     */
+    @When("I resolve {bundle} and optionally {bundle}")
+    public void iResolveOptionally(BundleRef mandatory, BundleRef optional) {
+        resolve(List.of(mandatory), List.of(optional));
+    }
+
+    /** Resolves without any bundle that has to be resolved. */
+    @When("I resolve nothing")
+    public void iResolveNothing() {
+        resolve(List.of(), List.of());
+    }
+
     private void resolve(List<BundleRef> mandatory) {
+        resolve(mandatory, List.of());
+    }
+
+    private void resolve(List<BundleRef> mandatory, List<BundleRef> optional) {
         resolved = true;
         try {
-            result = world.resolve(mandatory);
+            result = world.resolve(mandatory, optional);
         } catch (ResolutionException e) {
             failure = e;
         }
+    }
+
+    /** Asserts that the resolve succeeded without wiring any bundle. */
+    @Then("the resulting wiring is empty")
+    public void theResultingWiringIsEmpty() {
+        theResolutionSucceeds();
+        assertThat(result).isEmpty();
     }
 
     /** Asserts that the resolve succeeded. */

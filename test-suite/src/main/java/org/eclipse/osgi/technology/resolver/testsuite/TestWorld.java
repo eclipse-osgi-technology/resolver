@@ -87,9 +87,22 @@ public class TestWorld {
      * @throws ResolutionException if the resolve fails
      */
     public Map<Resource, List<Wire>> resolve(Collection<BundleRef> mandatory) throws ResolutionException {
+        return resolve(mandatory, List.of());
+    }
+
+    /**
+     * Resolves with all bundles available, some of them only if possible.
+     *
+     * @param mandatory the bundles that have to be resolved
+     * @param optional  the bundles that are resolved if possible
+     * @return the wires of every resolved resource
+     * @throws ResolutionException if the resolve of the mandatory bundles fails
+     */
+    public Map<Resource, List<Wire>> resolve(Collection<BundleRef> mandatory, Collection<BundleRef> optional)
+            throws ResolutionException {
         commit();
-        List<Resource> resources = mandatory.stream().map(this::find).toList();
-        context = engine.createContext(available, resources, List.of());
+        context = engine.createContext(available, mandatory.stream().map(this::find).toList(),
+                optional.stream().map(this::find).toList());
         return engine.resolve(context);
     }
 
