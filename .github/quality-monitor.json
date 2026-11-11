@@ -1,0 +1,37 @@
+{
+  "tests": {
+    "name": "Tests",
+    "tools": [
+      {
+        "id": "junit",
+        "name": "Unit Tests",
+        "pattern": "**/target/surefire-reports/TEST*.xml"
+      },
+      {
+        "id": "junit",
+        "icon": "rocket",
+        "name": "Integration Tests",
+        "pattern": "**/target/failsafe-reports/TEST*.xml"
+      }
+    ]
+  },
+  "coverage": [
+    {
+      "name": "Code Coverage",
+      "tools": [
+        {
+          "id": "jacoco",
+          "metric": "line",
+          "sourcePath": "src/main/java",
+          "pattern": "**/target/site/jacoco-aggregate/jacoco.xml"
+        },
+        {
+          "id": "jacoco",
+          "metric": "branch",
+          "sourcePath": "src/main/java",
+          "pattern": "**/target/site/jacoco-aggregate/jacoco.xml"
+        }
+      ]
+    }
+  ]
+}
