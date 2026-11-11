@@ -9,6 +9,9 @@
  *******************************************************************************/
 package org.eclipse.osgi.technology.resolver.testsuite;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import aQute.bnd.header.Attrs;
 import aQute.bnd.header.Parameters;
 import io.cucumber.java.en.Given;
@@ -201,5 +204,92 @@ public class BundleSteps {
     @Given("it optionally requires bundle {string}")
     public void itOptionallyRequiresBundle(String name) {
         bundle().addRequireBundle(name, new Attrs().with("resolution:", "optional"));
+    }
+
+    /**
+     * Provides a capability in an arbitrary namespace.
+     *
+     * @param namespace  the namespace
+     * @param attributes the attributes and directives in the syntax of a
+     *                   manifest clause, e.g. {@code name=foo}
+     */
+    @Given("it provides capability {string} with {string}")
+    public void itProvidesCapabilityWith(String namespace, String attributes) {
+        bundle().addProvideCapability(namespace, attrs(attributes));
+    }
+
+    /**
+     * Provides a capability without attributes in an arbitrary namespace.
+     *
+     * @param namespace the namespace
+     */
+    @Given("it provides capability {string}")
+    public void itProvidesCapability(String namespace) {
+        bundle().addProvideCapability(namespace, new Attrs());
+    }
+
+    /**
+     * Requires any capability in an arbitrary namespace, without a filter.
+     *
+     * @param namespace the namespace
+     */
+    @Given("it requires capability {string}")
+    public void itRequiresAnyCapability(String namespace) {
+        bundle().addRequireAnyCapability(namespace, Map.of());
+    }
+
+    /**
+     * Requires any capability in an arbitrary namespace with directives, without
+     * a filter.
+     *
+     * @param namespace  the namespace
+     * @param directives the directives in the syntax of a manifest clause, e.g.
+     *                   {@code cardinality:=multiple}
+     */
+    @Given("it requires capability {string} with {string}")
+    public void itRequiresAnyCapabilityWith(String namespace, String directives) {
+        Map<String, String> map = new HashMap<>();
+        attrs(directives).forEach(
+                (key, value) -> map.put(key.endsWith(":") ? key.substring(0, key.length() - 1) : key, value));
+        bundle().addRequireAnyCapability(namespace, map);
+    }
+
+    /**
+     * Requires a capability in an arbitrary namespace.
+     *
+     * @param namespace the namespace
+     * @param filter    the LDAP filter the capability attributes must match
+     */
+    @Given("it requires capability {string} with filter {string}")
+    public void itRequiresCapability(String namespace, String filter) {
+        bundle().addRequireCapability(namespace, namespace, new Attrs().with("filter:", filter));
+    }
+
+    /**
+     * Requires a capability in an arbitrary namespace with further directives
+     * and attributes.
+     *
+     * @param namespace  the namespace
+     * @param filter     the LDAP filter the capability attributes must match
+     * @param attributes the attributes and directives in the syntax of a
+     *                   manifest clause, e.g. {@code cardinality:=multiple}
+     */
+    @Given("it requires capability {string} with filter {string} and {string}")
+    public void itRequiresCapabilityWith(String namespace, String filter, String attributes) {
+        Attrs attrs = attrs(attributes);
+        attrs.put("filter:", filter);
+        bundle().addRequireCapability(namespace, namespace, attrs);
+    }
+
+    /**
+     * Requires a capability optionally, the bundle resolves without it.
+     *
+     * @param namespace the namespace
+     * @param filter    the LDAP filter the capability attributes must match
+     */
+    @Given("it optionally requires capability {string} with filter {string}")
+    public void itOptionallyRequiresCapability(String namespace, String filter) {
+        bundle().addRequireCapability(namespace, namespace,
+                new Attrs().with("filter:", filter).with("resolution:", "optional"));
     }
 }

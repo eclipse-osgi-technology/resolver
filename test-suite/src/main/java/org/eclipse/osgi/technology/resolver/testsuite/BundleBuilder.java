@@ -9,6 +9,8 @@
  *******************************************************************************/
 package org.eclipse.osgi.technology.resolver.testsuite;
 
+import java.util.Map;
+
 import org.osgi.framework.Version;
 import org.osgi.framework.namespace.AbstractWiringNamespace;
 import org.osgi.framework.namespace.BundleNamespace;
@@ -68,6 +70,20 @@ public class BundleBuilder extends ResourceBuilder {
         addRequirement(new CapReqBuilder(PackageNamespace.PACKAGE_NAMESPACE)
                 .addDirective("filter", "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + name + ")")
                 .addDirective("resolution", "dynamic").buildSyntheticRequirement());
+    }
+
+    /**
+     * Adds a requirement of a namespace that has no filter and therefore matches
+     * every capability of that namespace.
+     *
+     * @param namespace  the namespace
+     * @param directives the directives of the requirement, e.g.
+     *                   {@code cardinality=multiple}
+     */
+    public void addRequireAnyCapability(String namespace, Map<String, String> directives) {
+        CapReqBuilder builder = new CapReqBuilder(namespace);
+        directives.forEach(builder::addDirective);
+        addRequirement(builder.buildSyntheticRequirement());
     }
 
     private CapReqBuilder wiring(String namespace) {

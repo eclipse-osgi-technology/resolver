@@ -125,6 +125,18 @@ public class ResolveSteps {
         unsatisfied(ref, BundleNamespace.BUNDLE_NAMESPACE, name);
     }
 
+    /**
+     * Asserts that the resolve failed because a bundle has a requirement in a
+     * namespace that no capability satisfies.
+     *
+     * @param ref       the bundle with the unsatisfied requirement
+     * @param namespace the namespace of the requirement
+     */
+    @Then("the resolution fails because {bundle} has an unsatisfied requirement for capability in namespace {string}")
+    public void failsBecauseOfUnsatisfiedCapability(BundleRef ref, String namespace) {
+        unsatisfied(ref, namespace, null);
+    }
+
     private void unsatisfied(BundleRef ref, String namespace, String name) {
         assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
         world.engine().assertUnsatisfiedRequirement(failure, world.find(ref), namespace, name);
