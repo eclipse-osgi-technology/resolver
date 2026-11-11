@@ -81,4 +81,15 @@ public interface ResolverEngine {
      * @param resource    the resource whose class space is inconsistent
      */
     void assertUsesConflict(ResolutionException failure, String packageName, Resource resource);
+
+    /**
+     * Asserts that a failed resolve is caused by an import that no export
+     * satisfies, because the only matching export belongs to a bundle that has to
+     * substitute it with the export of another bundle.
+     *
+     * @param failure     the failure of the resolve
+     * @param importer    the resource with the import
+     * @param packageName the name of the package
+     */
+    void assertImportHiddenBySubstitution(ResolutionException failure, Resource importer, String packageName);
 }

@@ -180,6 +180,19 @@ public class ResolveSteps {
         world.engine().assertUsesConflict(failure, packageName, world.find(ref));
     }
 
+    /**
+     * Asserts that the resolve failed because the import of a bundle can only be
+     * satisfied by an export that has to be substituted by another export.
+     *
+     * @param packageName the name of the package
+     * @param ref         the bundle with the import
+     */
+    @Then("the resolution fails because the import of package {string} of {bundle} is hidden by a substituted export")
+    public void failsBecauseOfSubstitution(String packageName, BundleRef ref) {
+        assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
+        world.engine().assertImportHiddenBySubstitution(failure, world.find(ref), packageName);
+    }
+
     private void unsatisfied(BundleRef ref, String namespace, String name) {
         assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
         world.engine().assertUnsatisfiedRequirement(failure, world.find(ref), namespace, name);
@@ -305,6 +318,46 @@ public class ResolveSteps {
         wires(ref);
         assertThat(new ClassSpace(result).sources(world.find(ref), packageName))
                 .as("providers of %s visible to %s", packageName, ref).containsExactly(world.find(provider));
+    }
+
+    /**
+     * Asserts that a bundle exports and imports a package and gets the package
+     * from another bundle, so its own export is not used.
+     *
+     * @param ref         the bundle that exports and imports the package
+     * @param packageName the name of the package
+     */
+    @Then("{bundle} substitutes its export of package {string}")
+    public void substitutesExport(BundleRef ref, String packageName) {
+        assertThat(exports(ref, packageName)).as("%s exports %s", ref, packageName).isTrue();
+        assertThat(importWire(ref, packageName)).as("wire of the import of %s by %s", packageName, ref).isNotNull();
+    }
+
+    /**
+     * Asserts that a bundle exports and imports a package and uses its own
+     * export, so there is no wire for the import.
+     *
+     * @param ref         the bundle that exports and imports the package
+     * @param packageName the name of the package
+     */
+    @Then("{bundle} keeps its export of package {string}")
+    public void keepsExport(BundleRef ref, String packageName) {
+        assertThat(exports(ref, packageName)).as("%s exports %s", ref, packageName).isTrue();
+        assertThat(importWire(ref, packageName)).as("wire of the import of %s by %s", packageName, ref).isNull();
+    }
+
+    private boolean exports(BundleRef ref, String packageName) {
+        wires(ref);
+        return world.find(ref).getCapabilities(PackageNamespace.PACKAGE_NAMESPACE).stream()
+                .anyMatch(c -> packageName.equals(c.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)));
+    }
+
+    private Wire importWire(BundleRef ref, String packageName) {
+        return wires(ref).stream()
+                .filter(w -> PackageNamespace.PACKAGE_NAMESPACE.equals(w.getCapability().getNamespace())
+                        && w.getRequirer().equals(world.find(ref))
+                        && packageName.equals(w.getCapability().getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)))
+                .findFirst().orElse(null);
     }
 
     private List<Wire> wires(BundleRef ref) {
