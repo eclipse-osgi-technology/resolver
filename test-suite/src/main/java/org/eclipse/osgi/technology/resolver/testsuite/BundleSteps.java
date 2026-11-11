@@ -86,6 +86,29 @@ public class BundleSteps {
     }
 
     /**
+     * Exports a package that uses other packages.
+     *
+     * @param name     the package name
+     * @param packages the comma separated names of the used packages
+     */
+    @Given("it exports package {string} using {string}")
+    public void itExportsPackageUsing(String name, String packages) {
+        bundle().addExportPackage(name, new Attrs().with("uses:", packages));
+    }
+
+    /**
+     * Exports a package in a version that uses other packages.
+     *
+     * @param name     the package name
+     * @param version  the version of the package
+     * @param packages the comma separated names of the used packages
+     */
+    @Given("it exports package {string} in version {string} using {string}")
+    public void itExportsPackageInVersionUsing(String name, String version, String packages) {
+        bundle().addExportPackage(name, new Attrs().with("version", version).with("uses:", packages));
+    }
+
+    /**
      * Exports a package with attributes and directives.
      *
      * @param name       the package name
@@ -194,6 +217,17 @@ public class BundleSteps {
     @Given("it requires bundle {string} and reexports it")
     public void itRequiresBundleAndReexportsIt(String name) {
         bundle().addRequireBundle(name, new Attrs().with("visibility:", "reexport"));
+    }
+
+    /**
+     * Requires a bundle optionally and makes its exports visible to the bundles
+     * that require this one.
+     *
+     * @param name the symbolic name of the required bundle
+     */
+    @Given("it optionally requires bundle {string} and reexports it")
+    public void itOptionallyRequiresBundleAndReexportsIt(String name) {
+        bundle().addRequireBundle(name, new Attrs().with("visibility:", "reexport").with("resolution:", "optional"));
     }
 
     /**

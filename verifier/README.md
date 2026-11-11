@@ -14,7 +14,8 @@ The module has no dependencies besides the OSGi resource and framework namespace
 
 ## How it works
 
-There are two checks, both take the plain `org.osgi.resource` model (`Resource`, `Wire`) as input and return a list of human readable violations, an empty list means the result is fine.
+There are two checks and a helper, all take the plain `org.osgi.resource` model (`Resource`, `Wire`) as input.
+The checks return a list of human readable violations, an empty list means the result is fine.
 
 `WiringVerifier`
 : Checks that a result is a well formed wiring.
@@ -26,6 +27,10 @@ There are two checks, both take the plain `org.osgi.resource` model (`Resource`,
 : Checks that all class spaces of a result are consistent.
   It determines for every resource which source provides each visible package (imports, required bundles including reexports, own exports) and verifies the `uses` constraints along the wires: whoever consumes a capability must see every package it `uses` from the same source as the provider does.
   Split packages and `uses` on generic capabilities are covered.
+
+`ClassSpace`
+: The class space the `ConsistencyVerifier` is based on.
+  It tells which packages a resource sees, which capabilities make them visible and which resources they really come from, following the search order imports, required bundles (including reexports) and own exports.
 
 ```java
 Map<Resource, List<Wire>> result = ...; // wires produced by any resolver
