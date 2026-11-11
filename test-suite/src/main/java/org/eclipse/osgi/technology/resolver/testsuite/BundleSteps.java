@@ -121,6 +121,19 @@ public class BundleSteps {
     }
 
     /**
+     * Exports a package in a version with attributes and directives.
+     *
+     * @param name       the package name
+     * @param version    the version of the package
+     * @param attributes the attributes and directives in the syntax of a
+     *                   manifest clause
+     */
+    @Given("it exports package {string} in version {string} with {string}")
+    public void itExportsPackageInVersionWith(String name, String version, String attributes) {
+        bundle().addExportPackage(name, attrs(attributes).with("version", version));
+    }
+
+    /**
      * Imports a package of any version.
      *
      * @param name the package name
