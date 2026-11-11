@@ -70,4 +70,15 @@ public interface ResolverEngine {
      *                  for, {@code null} if not to be checked
      */
     void assertUnsatisfiedRequirement(ResolutionException failure, Resource resource, String namespace, String name);
+
+    /**
+     * Asserts that a failed resolve is caused by a uses constraint violation,
+     * that is different bundles provide the same package to the class space of a
+     * resource.
+     *
+     * @param failure     the failure of the resolve
+     * @param packageName the name of the conflicting package
+     * @param resource    the resource whose class space is inconsistent
+     */
+    void assertUsesConflict(ResolutionException failure, String packageName, Resource resource);
 }

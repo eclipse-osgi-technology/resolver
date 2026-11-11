@@ -11,11 +11,14 @@ package org.eclipse.osgi.technology.resolver.felix;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.felix.resolver.Logger;
 import org.apache.felix.resolver.ResolverImpl;
+import org.apache.felix.resolver.reason.ReasonException;
+import org.apache.felix.resolver.reason.ReasonException.Reason;
 import org.eclipse.osgi.technology.resolver.testsuite.ResolverEngine;
 import org.osgi.resource.Namespace;
 import org.osgi.resource.Resource;
@@ -59,5 +62,20 @@ public class FelixEngine implements ResolverEngine {
                         .contains("(" + namespace + "=" + name + ")");
             }
         });
+    }
+
+    /**
+     * Felix tags a failure with the reason, but names the requirement to blame and
+     * not the package, so only the reason can be checked.
+     */
+    @Override
+    public void assertUsesConflict(ResolutionException failure, String packageName, Resource resource) {
+        List<Reason> reasons = new ArrayList<>();
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof ReasonException reason) {
+                reasons.add(reason.getReason());
+            }
+        }
+        assertThat(reasons).as("reasons of the failure").contains(Reason.UseConstraint);
     }
 }
