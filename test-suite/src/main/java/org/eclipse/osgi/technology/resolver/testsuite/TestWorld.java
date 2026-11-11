@@ -20,6 +20,7 @@ import org.osgi.resource.Wire;
 import org.osgi.service.resolver.ResolutionException;
 import org.osgi.service.resolver.ResolveContext;
 
+import aQute.bnd.header.Attrs;
 import aQute.bnd.osgi.resource.ResourceUtils;
 
 /**
@@ -46,8 +47,34 @@ public class TestWorld {
      * @return the builder that describes the bundle
      */
     public BundleBuilder startBundle(BundleRef ref) {
+        return startBundle(ref, new Attrs());
+    }
+
+    /**
+     * Starts a new bundle with directives on its Bundle-SymbolicName clause and
+     * completes the previous one.
+     *
+     * @param ref        the symbolic name and version of the bundle
+     * @param directives the directives, e.g. {@code fragment-attachment:=never}
+     * @return the builder that describes the bundle
+     */
+    public BundleBuilder startBundle(BundleRef ref, Attrs directives) {
         commit();
-        current = new BundleBuilder(ref);
+        current = BundleBuilder.bundle(ref, directives);
+        return current;
+    }
+
+    /**
+     * Starts a new fragment and completes the previous bundle.
+     *
+     * @param ref        the symbolic name and version of the fragment
+     * @param host       the symbolic name of the host
+     * @param attributes the attributes of its Fragment-Host clause
+     * @return the builder that describes the fragment
+     */
+    public BundleBuilder startFragment(BundleRef ref, String host, Attrs attributes) {
+        commit();
+        current = BundleBuilder.fragment(ref, host, attributes);
         return current;
     }
 
