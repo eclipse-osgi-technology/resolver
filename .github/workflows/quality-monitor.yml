@@ -1,0 +1,54 @@
+# Publishes test results and code coverage as PR comment and check.
+# Runs after the build workflow on the base repository with write
+# permissions, so it also works for PRs from forks. It must never check out
+# or execute code of the PR: it only reads the report artifacts of the build.
+name: quality-monitor
+on:
+  workflow_run:
+    workflows: [ build ]
+    types: [ completed ]
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+  checks: write
+jobs:
+  report:
+    # the reports are uploaded even if tests failed
+    if: github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # checks out the default branch (workflow_run), not the PR: the
+      # configuration is trusted
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: '*-reports-jdk25'
+          merge-multiple: true
+          path: reports
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: PR number
+        id: pr
+        run: |
+          if [ -f reports/pr-number.txt ]; then
+            echo "number=$(tr -d '\r\n ' < reports/pr-number.txt)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read configuration
+        id: config
+        run: echo "json=$(jq -c . .github/quality-monitor.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Quality Monitor
+        uses: uhafner/quality-monitor@885b2978d711daa32d4c6700c514df3e94053cb4 # v14.16.0
+        with:
+          sha: ${{ github.event.workflow_run.head_sha }}
+          config: ${{ steps.config.outputs.json }}
+          pr-number: ${{ steps.pr.outputs.number }}
+          comments-strategy: REMOVE
+          show-headers: true
+          title-metric: none
