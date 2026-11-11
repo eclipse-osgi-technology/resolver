@@ -87,3 +87,39 @@ Feature: Fragment bundles
     And there is a fragment bundle "fragment" of bundle "host"
     When I resolve bundle "fragment"
     Then the resolution fails because bundle "fragment" has no host "host"
+
+  Scenario: A package exported by a fragment is provided by the host
+    Given there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it exports package "foo"
+    And there is bundle "importer"
+    And it imports package "foo"
+    When I resolve bundle "importer" and bundle "fragment"
+    Then the resolution succeeds
+    And the resolved bundles are exactly "importer, fragment, host"
+    And bundle "importer" is wired to bundle "host" for package "foo"
+    And bundle "fragment" is wired to bundle "host"
+
+  Scenario: A package import of a fragment is wired for the host
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it imports package "foo"
+    When I resolve bundle "fragment"
+    Then the resolution succeeds
+    And bundle "host" is wired to bundle "exporter" for package "foo"
+
+  Scenario: A fragment with an unsatisfied import can not be resolved
+    Given there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it imports package "missing"
+    When I resolve bundle "fragment"
+    Then the resolution fails because bundle "fragment" has an unsatisfied import of package "missing"
+
+  Scenario: A host that can not be resolved fails the fragment
+    Given there is bundle "host"
+    And it imports package "missing"
+    And there is a fragment bundle "fragment" of bundle "host"
+    When I resolve bundle "fragment"
+    Then the resolution fails because bundle "host" has an unsatisfied import of package "missing"

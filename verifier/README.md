@@ -31,6 +31,7 @@ The checks return a list of human readable violations, an empty list means the r
 `ClassSpace`
 : The class space the `ConsistencyVerifier` is based on.
   It tells which packages a resource sees, which capabilities make them visible and which resources they really come from, following the search order imports, required bundles (including reexports) and own exports.
+  The packages of an attached fragment belong to its host.
 
 ```java
 Map<Resource, List<Wire>> result = ...; // wires produced by any resolver
