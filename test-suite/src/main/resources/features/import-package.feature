@@ -131,3 +131,131 @@ Feature: Import-Package
     And it imports package "foo" in version range "[1.0,2.0)"
     When I resolve bundle "importer"
     Then the resolution fails because bundle "importer" has an unsatisfied import of package "foo"
+
+  Scenario: An import with an attribute matches an export having it
+    Given there is bundle "exporter-red"
+    And it exports package "foo" with "color=red"
+    And there is bundle "exporter-blue"
+    And it exports package "foo" with "color=blue"
+    And there is bundle "importer"
+    And it imports package "foo" with "color=red"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "exporter-red" for package "foo"
+
+  Scenario: An import with an attribute does not match an export without it
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And there is bundle "importer"
+    And it imports package "foo" with "color=red"
+    When I resolve bundle "importer"
+    Then the resolution fails because bundle "importer" has an unsatisfied import of package "foo"
+
+  Scenario: An export with a mandatory attribute only matches imports that name it
+    Given there is bundle "exporter"
+    And it exports package "foo" with "color=red;mandatory:=color"
+    And there is bundle "importer"
+    And it imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution fails because bundle "importer" has an unsatisfied import of package "foo"
+
+  Scenario: An import naming the mandatory attribute matches
+    Given there is bundle "exporter"
+    And it exports package "foo" with "color=red;mandatory:=color"
+    And there is bundle "importer"
+    And it imports package "foo" with "color=red"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "exporter" for package "foo"
+
+  Scenario: An import can be restricted to the exporting bundle
+    Given there is bundle "preferred"
+    And it exports package "foo" in version "1.0.0"
+    And there is bundle "higher"
+    And it exports package "foo" in version "2.0.0"
+    And there is bundle "importer"
+    And it imports package "foo" from bundle "preferred"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "preferred" for package "foo"
+
+  Scenario: An exporter that can not be resolved fails its importers
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And it imports package "missing"
+    And there is bundle "importer"
+    And it imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution fails because bundle "exporter" has an unsatisfied import of package "missing"
+
+  Scenario: Imports are resolved transitively
+    Given there is bundle "base"
+    And it exports package "base"
+    And there is bundle "middle"
+    And it imports package "base"
+    And it exports package "middle"
+    And there is bundle "top"
+    And it imports package "middle"
+    When I resolve bundle "top"
+    Then the resolution succeeds
+    And the resolved bundles are exactly "top, middle, base"
+    And bundle "top" is wired to bundle "middle" for package "middle"
+    And bundle "middle" is wired to bundle "base" for package "base"
+
+  Scenario: An exporter that can not be resolved is skipped in favor of one that can
+    Given there is bundle "exporter-broken"
+    And it exports package "foo" in version "2.0.0"
+    And it imports package "missing"
+    And there is bundle "exporter-good"
+    And it exports package "foo" in version "1.0.0"
+    And there is bundle "importer"
+    And it imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "exporter-good" for package "foo"
+    And bundle "exporter-broken" is not resolved
+
+  Scenario: An optional import without exporter does not prevent resolving
+    Given there is bundle "importer"
+    And it optionally imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is resolved
+    And bundle "importer" has 0 wires
+
+  Scenario: An optional import is wired when an exporter is available
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And there is bundle "importer"
+    And it optionally imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "exporter" for package "foo"
+
+  Scenario: An optional import is not wired to an exporter that can not be resolved
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And it imports package "missing"
+    And there is bundle "importer"
+    And it optionally imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" has 0 wires
+    And bundle "exporter" is not resolved
+
+  Scenario: A dynamic import does not influence resolving
+    Given there is bundle "importer"
+    And it dynamically imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" has 0 wires
+
+  Scenario: A dynamic import is not wired when resolving even if an exporter exists
+    Given there is bundle "exporter"
+    And it exports package "foo"
+    And there is bundle "importer"
+    And it dynamically imports package "foo"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" has 0 wires
+    And bundle "exporter" is not resolved

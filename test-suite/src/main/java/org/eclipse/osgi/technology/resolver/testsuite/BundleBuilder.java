@@ -14,6 +14,7 @@ import org.osgi.framework.namespace.AbstractWiringNamespace;
 import org.osgi.framework.namespace.BundleNamespace;
 import org.osgi.framework.namespace.HostNamespace;
 import org.osgi.framework.namespace.IdentityNamespace;
+import org.osgi.framework.namespace.PackageNamespace;
 
 import aQute.bnd.header.Attrs;
 import aQute.bnd.osgi.resource.CapReqBuilder;
@@ -56,6 +57,17 @@ public class BundleBuilder extends ResourceBuilder {
     @Override
     public void addExportPackage(String name, Attrs attrs) {
         addExportPackage(name, attrs, ref.name(), ref.version());
+    }
+
+    /**
+     * Adds a dynamic import of a package, which is only wired on request.
+     *
+     * @param name the package name
+     */
+    public void addDynamicImportPackage(String name) {
+        addRequirement(new CapReqBuilder(PackageNamespace.PACKAGE_NAMESPACE)
+                .addDirective("filter", "(" + PackageNamespace.PACKAGE_NAMESPACE + "=" + name + ")")
+                .addDirective("resolution", "dynamic").buildSyntheticRequirement());
     }
 
     private CapReqBuilder wiring(String namespace) {
