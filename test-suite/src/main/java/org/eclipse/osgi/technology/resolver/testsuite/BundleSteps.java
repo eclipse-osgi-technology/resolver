@@ -65,6 +65,42 @@ public class BundleSteps {
     }
 
     /**
+     * Starts a bundle that decides on its own which fragments it accepts.
+     *
+     * @param ref    the symbolic name and optionally the version
+     * @param policy the fragment-attachment directive, {@code always},
+     *               {@code resolve-time} or {@code never}
+     */
+    @Given("there is {bundle} with fragment attachment policy {string}")
+    public void thereIsBundleWithFragmentAttachment(BundleRef ref, String policy) {
+        current = world.startBundle(ref, new Attrs().with("fragment-attachment:", policy));
+    }
+
+    /**
+     * Starts a fragment of a host of any version.
+     *
+     * @param ref  the symbolic name and optionally the version of the fragment
+     * @param host the symbolic name of the host
+     */
+    @Given("there is a fragment {bundle} of bundle {string}")
+    public void thereIsFragment(BundleRef ref, String host) {
+        current = world.startFragment(ref, host, new Attrs());
+    }
+
+    /**
+     * Starts a fragment of a host in a version range.
+     *
+     * @param ref   the symbolic name and optionally the version of the fragment
+     * @param host  the symbolic name of the host
+     * @param range the version range of the host, a plain version means that
+     *              version or higher
+     */
+    @Given("there is a fragment {bundle} of bundle {string} in version range {string}")
+    public void thereIsFragmentInRange(BundleRef ref, String host, String range) {
+        current = world.startFragment(ref, host, new Attrs().with("bundle-version", range));
+    }
+
+    /**
      * Exports a package without version.
      *
      * @param name the package name

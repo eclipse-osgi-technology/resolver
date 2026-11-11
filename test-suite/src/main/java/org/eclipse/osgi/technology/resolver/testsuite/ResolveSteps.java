@@ -18,6 +18,7 @@ import org.eclipse.osgi.technology.resolver.verifier.ClassSpace;
 import org.eclipse.osgi.technology.resolver.verifier.ConsistencyVerifier;
 import org.eclipse.osgi.technology.resolver.verifier.WiringVerifier;
 import org.osgi.framework.namespace.BundleNamespace;
+import org.osgi.framework.namespace.HostNamespace;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Resource;
 import org.osgi.resource.Wire;
@@ -191,6 +192,18 @@ public class ResolveSteps {
     public void failsBecauseOfSubstitution(String packageName, BundleRef ref) {
         assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
         world.engine().assertImportHiddenBySubstitution(failure, world.find(ref), packageName);
+    }
+
+    /**
+     * Asserts that the resolve failed because a fragment has no host that
+     * accepts it.
+     *
+     * @param ref  the fragment
+     * @param host the symbolic name of the host it needs
+     */
+    @Then("the resolution fails because {bundle} has no host {string}")
+    public void failsBecauseOfMissingHost(BundleRef ref, String host) {
+        unsatisfied(ref, HostNamespace.HOST_NAMESPACE, host);
     }
 
     private void unsatisfied(BundleRef ref, String namespace, String name) {

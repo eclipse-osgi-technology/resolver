@@ -24,8 +24,8 @@ import aQute.bnd.osgi.resource.ResourceBuilder;
 
 /**
  * A {@link ResourceBuilder} for one bundle of a scenario that knows which
- * bundle it builds. The identity, bundle and host capabilities are added when
- * it is created. Exported packages always carry the symbolic name and version
+ * bundle it builds. The identity capability and, for a bundle, its bundle and host
+ * capabilities are added when it is created. Exported packages always carry the symbolic name and version
  * of this bundle, the {@link ResourceBuilder} would leave both out if they are
  * not given explicitly.
  */
@@ -33,20 +33,49 @@ public class BundleBuilder extends ResourceBuilder {
 
     private final BundleRef ref;
 
-    /**
-     * Creates the builder of a bundle.
-     *
-     * @param ref the symbolic name and version of the bundle, a missing version
-     *            is the empty version
-     */
-    public BundleBuilder(BundleRef ref) {
+    private BundleBuilder(BundleRef ref, String type) {
         this.ref = new BundleRef(ref.name(), ref.version() == null ? Version.emptyVersion : ref.version());
         addCapability(new CapReqBuilder(IdentityNamespace.IDENTITY_NAMESPACE)
                 .addAttribute(IdentityNamespace.IDENTITY_NAMESPACE, this.ref.name())
                 .addAttribute(IdentityNamespace.CAPABILITY_VERSION_ATTRIBUTE, this.ref.version())
-                .addAttribute(IdentityNamespace.CAPABILITY_TYPE_ATTRIBUTE, IdentityNamespace.TYPE_BUNDLE));
-        addCapability(wiring(BundleNamespace.BUNDLE_NAMESPACE));
-        addCapability(wiring(HostNamespace.HOST_NAMESPACE));
+                .addAttribute(IdentityNamespace.CAPABILITY_TYPE_ATTRIBUTE, type));
+    }
+
+    /**
+     * Creates the builder of a bundle.
+     *
+     * @param ref        the symbolic name and version of the bundle, a missing
+     *                   version is the empty version
+     * @param directives the directives of its Bundle-SymbolicName clause, e.g.
+     *                   {@code fragment-attachment:=never}, they are also visible
+     *                   on its bundle and host capability
+     * @return the builder
+     */
+    public static BundleBuilder bundle(BundleRef ref, Attrs directives) {
+        BundleBuilder builder = new BundleBuilder(ref, IdentityNamespace.TYPE_BUNDLE);
+        builder.addCapability(builder.wiring(BundleNamespace.BUNDLE_NAMESPACE, directives));
+        // a host that never takes fragments has no host capability
+        if (!HostNamespace.FRAGMENT_ATTACHMENT_NEVER
+                .equals(directives.get(HostNamespace.CAPABILITY_FRAGMENT_ATTACHMENT_DIRECTIVE + ":"))) {
+            builder.addCapability(builder.wiring(HostNamespace.HOST_NAMESPACE, directives));
+        }
+        return builder;
+    }
+
+    /**
+     * Creates the builder of a fragment.
+     *
+     * @param ref        the symbolic name and version of the fragment, a missing
+     *                   version is the empty version
+     * @param host       the symbolic name of the host
+     * @param attributes the attributes of its Fragment-Host clause, e.g. the
+     *                   {@code bundle-version} range
+     * @return the builder
+     */
+    public static BundleBuilder fragment(BundleRef ref, String host, Attrs attributes) {
+        BundleBuilder builder = new BundleBuilder(ref, IdentityNamespace.TYPE_FRAGMENT);
+        builder.addFragmentHost(host, attributes);
+        return builder;
     }
 
     /**
@@ -86,8 +115,10 @@ public class BundleBuilder extends ResourceBuilder {
         addRequirement(builder.buildSyntheticRequirement());
     }
 
-    private CapReqBuilder wiring(String namespace) {
-        return new CapReqBuilder(namespace).addAttribute(namespace, ref.name())
+    private CapReqBuilder wiring(String namespace, Attrs directives) {
+        CapReqBuilder capability = new CapReqBuilder(namespace).addAttribute(namespace, ref.name())
                 .addAttribute(AbstractWiringNamespace.CAPABILITY_BUNDLE_VERSION_ATTRIBUTE, ref.version());
+        capability.addAttributesOrDirectives(directives);
+        return capability;
     }
 }
