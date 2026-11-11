@@ -167,6 +167,19 @@ public class ResolveSteps {
         unsatisfied(ref, namespace, null);
     }
 
+    /**
+     * Asserts that the resolve failed because different bundles provide the same
+     * package to the class space of a bundle, although one of them uses it.
+     *
+     * @param packageName the name of the conflicting package
+     * @param ref         the bundle whose class space is inconsistent
+     */
+    @Then("the resolution fails because of a uses constraint violation on package {string} for {bundle}")
+    public void failsBecauseOfUsesViolation(String packageName, BundleRef ref) {
+        assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
+        world.engine().assertUsesConflict(failure, packageName, world.find(ref));
+    }
+
     private void unsatisfied(BundleRef ref, String namespace, String name) {
         assertThat(failure).as("resolution failure, but resolved: " + result).isNotNull();
         world.engine().assertUnsatisfiedRequirement(failure, world.find(ref), namespace, name);
