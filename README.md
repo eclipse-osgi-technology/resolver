@@ -27,10 +27,12 @@ Our test suite is intended to be usable against these implementations as well, s
 
 The repository is in its initial setup phase and grows module by module.
 
-| Module               | Description                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------- |
-| [index](index)       | Resolver independent lookup structures over the resources and capabilities of a resolve     |
-| [verifier](verifier) | Resolver independent checks that a resolve result is well formed and class space consistent |
+| Module                           | Description                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| [index](index)                   | Resolver independent lookup structures over the resources and capabilities of a resolve     |
+| [verifier](verifier)             | Resolver independent checks that a resolve result is well formed and class space consistent |
+| [test-suite](test-suite)         | Cucumber scenarios that exercise a resolver through the OSGi Resolver Service API           |
+| [felix-resolver](felix-resolver) | Runs the test suite against the Apache Felix resolver                                       |
 
 Build with JDK 25 and `mvn verify`.
 

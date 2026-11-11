@@ -34,6 +34,8 @@
   <modules>
     <module>index</module>
     <module>verifier</module>
+    <module>test-suite</module>
+    <module>felix-resolver</module>
   </modules>
 
   <build>
@@ -77,6 +79,8 @@
     <jacoco.version>0.8.16</jacoco.version>
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
+    <cucumber.version>7.34.3</cucumber.version>
+    <felix.resolver.version>2.0.4</felix.resolver.version>
   </properties>
 
   <dependencyManagement>
@@ -105,6 +109,13 @@
         <groupId>org.junit</groupId>
         <artifactId>junit-bom</artifactId>
         <version>${junit.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.cucumber</groupId>
+        <artifactId>cucumber-bom</artifactId>
+        <version>${cucumber.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
