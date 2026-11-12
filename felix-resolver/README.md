@@ -15,6 +15,12 @@ The module contains only test code and uses the released `org.apache.felix.resol
 - `RunCucumberTest` - the JUnit platform suite that runs the features of the test suite.
 - `META-INF/services/org.eclipse.osgi.technology.resolver.testsuite.ResolverEngine` - registers the engine.
 
+## Coverage
+
+The module has no classes of its own.
+To make the coverage report show which parts of the Felix resolver the scenarios exercise, the build unpacks the released classes and the matching sources into the module.
+The numbers of this module are therefore the coverage of Felix by the test suite.
+
 ## How to extend
 
 Scenarios are added to the [test suite](../test-suite), this module only needs changes if the way Felix is invoked or how it reports failures changes.
