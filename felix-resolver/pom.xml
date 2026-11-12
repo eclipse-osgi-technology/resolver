@@ -94,8 +94,64 @@
         <artifactId>maven-jar-plugin</artifactId>
         <executions>
           <execution>
+            <id>default-jar</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
             <id>test-jar</id>
             <phase>none</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <!-- the module has no classes of its own, so the code under test is made visible to the coverage report -->
+          <execution>
+            <id>unpack-felix-resolver</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>unpack</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.apache.felix</groupId>
+                  <artifactId>org.apache.felix.resolver</artifactId>
+                  <version>${felix.resolver.version}</version>
+                  <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                  <excludes>META-INF/**</excludes>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.apache.felix</groupId>
+                  <artifactId>org.apache.felix.resolver</artifactId>
+                  <version>${felix.resolver.version}</version>
+                  <classifier>sources</classifier>
+                  <outputDirectory>${project.build.directory}/felix-sources</outputDirectory>
+                  <excludes>META-INF/**</excludes>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>add-felix-sources</id>
+            <phase>process-classes</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/felix-sources</source>
+              </sources>
+            </configuration>
           </execution>
         </executions>
       </plugin>
