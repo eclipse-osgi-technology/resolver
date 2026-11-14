@@ -83,6 +83,34 @@ Feature: Require-Bundle class space
     Then the resolution succeeds
     And bundle "consumer" sees package "p" from bundle "root"
 
+  Scenario: A required bundle version range selects the highest bundle of the range
+    Given there is bundle "provider" version 1.0.0
+    And it exports package "p"
+    And there is bundle "provider" version 2.0.0
+    And it exports package "p"
+    And there is bundle "provider" version 3.0.0
+    And it exports package "p"
+    And there is bundle "consumer"
+    And it requires bundle "provider" in version range "[1.0,3.0)"
+    When I resolve bundle "consumer"
+    Then the resolution succeeds
+    And bundle "consumer" sees package "p" from bundle "provider" version 2.0.0
+
+  Scenario: A required package is inconsistent with what an imported package uses
+    The consumer sees "p" from "required", but the exporter of "q" is wired to another provider of "p".
+    Given there is bundle "required"
+    And it exports package "p"
+    And there is bundle "other"
+    And it exports package "p" in version "2.0.0"
+    And there is bundle "user"
+    And it imports package "p" in version range "[2.0,3.0)"
+    And it exports package "q" using "p"
+    And there is bundle "consumer"
+    And it requires bundle "required"
+    And it imports package "q"
+    When I resolve bundle "consumer"
+    Then the resolution fails because of a uses constraint violation on package "p" for bundle "consumer"
+
   Scenario: The provider of an import is the required bundle when the exporter has a choice
     The exporter of "q" imports "p" from whichever provider is free to choose, it has to take the one the consumer requires.
     Given there is bundle "required"
