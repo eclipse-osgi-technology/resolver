@@ -157,3 +157,53 @@ Feature: Generic capabilities and requirements
     Then the resolution succeeds
     And bundle "a" is wired to bundle "b" for capability in namespace "ns.b"
     And bundle "b" is wired to bundle "a" for capability in namespace "ns.a"
+
+  Scenario: The consumer of a capability with a uses directive sees the used package from the same provider
+    A capability can name packages in its uses directive, so the consumer has to see them from the same provider as the bundle that provides the capability.
+    Given there is bundle "p-old"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "p-new"
+    And it exports package "p" in version "2.0.0"
+    And there is bundle "provider"
+    And it imports package "p" in version range "[1.0,2.0)"
+    And it provides capability "my.ns" with "name=foo;uses:=p"
+    And there is bundle "consumer"
+    And it requires capability "my.ns" with filter "(name=foo)"
+    And it imports package "p"
+    When I resolve bundle "consumer"
+    Then the resolution succeeds
+    And bundle "consumer" is wired to bundle "p-old" for package "p"
+
+  Scenario: A uses directive of a capability can conflict with the package imports of the consumer
+    Given there is bundle "provider"
+    And it imports package "p" in version range "[1.0,2.0)"
+    And it provides capability "my.ns" with "name=foo;uses:=p"
+    And there is bundle "p-old"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "p-new"
+    And it exports package "p" in version "2.0.0"
+    And there is bundle "consumer"
+    And it requires capability "my.ns" with filter "(name=foo)"
+    And it imports package "p" in version range "[2.0,3.0)"
+    When I resolve bundle "consumer"
+    Then the resolution fails because of a uses constraint violation on package "p" for bundle "consumer"
+
+  Rule: A requirement for a contract is satisfied by the matching version of the contract
+    A contract is a capability in the namespace osgi.contract with a version.
+
+    Scenario: The contract version is inside the requested range
+      Given there is bundle "api"
+      And it provides capability "osgi.contract" with "osgi.contract=Example;version:Version=3.1.0"
+      And there is bundle "client"
+      And it requires capability "osgi.contract" with filter "(&(osgi.contract=Example)(&(version>=3.0.0)(!(version>=4.0.0))))"
+      When I resolve bundle "client"
+      Then the resolution succeeds
+      And bundle "client" is wired to bundle "api" for capability in namespace "osgi.contract"
+
+    Scenario: The contract version is above the requested range
+      Given there is bundle "api"
+      And it provides capability "osgi.contract" with "osgi.contract=Example;version:Version=4.0.0"
+      And there is bundle "client"
+      And it requires capability "osgi.contract" with filter "(&(osgi.contract=Example)(&(version>=3.0.0)(!(version>=4.0.0))))"
+      When I resolve bundle "client"
+      Then the resolution fails because bundle "client" has an unsatisfied requirement for capability in namespace "osgi.contract"
