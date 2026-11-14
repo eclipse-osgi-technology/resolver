@@ -137,6 +137,97 @@ Feature: Specification coverage
       And bundle "both" is wired to bundle "better" for package "p"
       And bundle "both" substitutes its export of package "p"
 
+  Rule: Fragments contribute requirements and capabilities to the host as if they were its own
+
+    Scenario: A fragment requires a bundle for its host
+      Given there is bundle "lib"
+      And it exports package "p"
+      And there is bundle "host"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it requires bundle "lib"
+      When I resolve bundle "host" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "host" is wired to bundle "lib" for capability in namespace "osgi.wiring.bundle"
+      And bundle "host" sees package "p" from bundle "lib"
+
+    Scenario: A fragment with an unsatisfied bundle requirement is not attached
+      Given there is bundle "host"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it requires bundle "missing"
+      When I resolve bundle "host" and optionally bundle "fragment"
+      Then bundle "host" is resolved
+      And bundle "fragment" is not resolved
+
+    Scenario: An export of a fragment that uses a package of the host constrains the consumers
+      Given there is bundle "provider-1"
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "provider-2"
+      And it exports package "p" in version "2.0.0"
+      And there is bundle "host"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it exports package "q" using "p"
+      And there is bundle "consumer"
+      And it imports package "q"
+      And it imports package "p" in version range "[2.0,3.0)"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution fails because of a uses constraint violation on package "p" for bundle "consumer"
+
+    Scenario: An export of a fragment that uses a package of the host is consistent with the same provider
+      Given there is bundle "provider-1"
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "provider-2"
+      And it exports package "p" in version "2.0.0"
+      And there is bundle "host"
+      And it imports package "p"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it exports package "q" using "p"
+      And there is bundle "consumer"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "host" is wired to bundle "provider-1" for package "p"
+      And bundle "consumer" is wired to bundle "provider-1" for package "p"
+
+    Scenario: A package exported by a fragment is seen by the host in its own class space
+      Given there is bundle "other"
+      And it exports package "p"
+      And there is bundle "host"
+      And it exports package "q" using "p"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it exports package "p"
+      And there is bundle "consumer"
+      And it imports package "q"
+      And it imports package "p" from bundle "other"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution fails because of a uses constraint violation on package "p" for bundle "consumer"
+
+    Scenario: A package of a fragment is seen through Require-Bundle of the host
+      Given there is bundle "other"
+      And it exports package "p"
+      And there is bundle "middle"
+      And it imports package "p" from bundle "other"
+      And it exports package "r" using "p"
+      And there is bundle "host"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it exports package "p"
+      And there is bundle "consumer"
+      And it requires bundle "host"
+      And it imports package "r"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution fails because of a uses constraint violation on package "p" for bundle "consumer"
+
+    Scenario: A package of a fragment is seen by the consumer that requires the host
+      Given there is bundle "host"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And it exports package "p"
+      And there is bundle "consumer"
+      And it requires bundle "host"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "consumer" sees package "p" from bundle "host"
+
   Rule: Bundles that depend on each other resolve together, a cycle is no reason to fail
 
     Scenario: Two bundles importing from each other

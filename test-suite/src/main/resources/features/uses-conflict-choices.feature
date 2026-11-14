@@ -193,6 +193,34 @@ Feature: Resolving uses conflicts
       And bundle "middle" is wired to bundle "p-1" for package "p"
       And bundle "middle" is wired to bundle "r-1" for package "r"
 
+    Scenario: An unrelated fragment in the resolve does not prevent the provider from adapting
+      Given there is bundle "middle"
+      And it imports package "p"
+      And it exports package "q" using "p"
+      And there is bundle "host"
+      And there is a fragment bundle "fragment" of bundle "host"
+      And there is bundle "consumer"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "middle" is wired to bundle "p-1" for package "p"
+      And bundle "consumer" is wired to bundle "middle" for package "q"
+
+    Scenario: An import that a fragment adds to the provider adapts as well
+      The import of the fragment is an import of its host, so the host can pick another provider of the package.
+      Given there is bundle "middle"
+      And it exports package "q" using "p"
+      And there is a fragment bundle "fragment" of bundle "middle"
+      And it imports package "p"
+      And there is bundle "consumer"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      When I resolve bundle "consumer" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "middle" is wired to bundle "p-1" for package "p"
+      And bundle "consumer" is wired to bundle "middle" for package "q"
+
     Scenario: The packages a bundle imports from one provider move to another provider together
       Given there is bundle "lib-1"
       And it exports package "a" in version "1.0.0"
