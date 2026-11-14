@@ -99,6 +99,17 @@ public class ResolveSteps {
         resolve(List.of(mandatory), List.of(optional));
     }
 
+    /** Resolves with every described bundle as a bundle that has to be resolved. */
+    @When("I resolve all bundles")
+    public void iResolveAll() {
+        resolved = true;
+        try {
+            result = world.resolveAll();
+        } catch (ResolutionException e) {
+            failure = e;
+        }
+    }
+
     /** Resolves without any bundle that has to be resolved. */
     @When("I resolve nothing")
     public void iResolveNothing() {
