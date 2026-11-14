@@ -132,6 +132,19 @@ Feature: Import-Package
     When I resolve bundle "importer"
     Then the resolution fails because bundle "importer" has an unsatisfied import of package "foo"
 
+  Scenario: The highest matching version is preferred
+    If several exports match, the one with the highest version is wired.
+    Given there is bundle "exporter-old"
+    And it exports package "foo" in version "1.0.0"
+    And there is bundle "exporter-new"
+    And it exports package "foo" in version "1.5.0"
+    And there is bundle "importer"
+    And it imports package "foo" in version range "[1.0,2.0)"
+    When I resolve bundle "importer"
+    Then the resolution succeeds
+    And bundle "importer" is wired to bundle "exporter-new" for package "foo"
+    And bundle "exporter-old" is not resolved
+
   Scenario: An import with an attribute matches an export having it
     Given there is bundle "exporter-red"
     And it exports package "foo" with "color=red"
@@ -259,3 +272,28 @@ Feature: Import-Package
     Then the resolution succeeds
     And bundle "importer" has 0 wires
     And bundle "exporter" is not resolved
+
+  Rule: A failure deep in the dependency chain is reported at the bundle that misses the provider
+
+    Scenario: A transitive missing package fails the whole chain
+      Given there is bundle "top"
+      And it requires bundle "middle"
+      And there is bundle "middle"
+      And it imports package "util"
+      And there is bundle "util.provider"
+      And it exports package "util"
+      And it imports package "missing"
+      When I resolve bundle "top"
+      Then the resolution fails because bundle "util.provider" has an unsatisfied import of package "missing"
+
+    Scenario: A transitive missing optional package does not fail the chain
+      Given there is bundle "top"
+      And it requires bundle "middle"
+      And there is bundle "middle"
+      And it imports package "util"
+      And there is bundle "util.provider"
+      And it exports package "util"
+      And it optionally imports package "missing"
+      When I resolve bundle "top"
+      Then the resolution succeeds
+      And bundle "middle" is wired to bundle "util.provider" for package "util"

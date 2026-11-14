@@ -100,3 +100,115 @@ Feature: Require-Bundle
     Then the resolution succeeds
     And bundle "consumer" has 0 wires
     And bundle "provider" is not resolved
+
+  Scenario: An optional requirement chain is only wired as far as resolvable
+    Given there is bundle "res2"
+    And it requires bundle "res5"
+    And it requires bundle "res4"
+    And it optionally requires bundle "res3"
+    And there is bundle "res3"
+    And it requires bundle "res2"
+    And it requires capability "foo" with filter "(foo=bar)"
+    And there is bundle "res4"
+    And it requires bundle "res5"
+    And there is bundle "res5"
+    When I resolve bundle "res2"
+    Then the resolution succeeds
+    And the resolved bundles are exactly "res2, res4, res5"
+    And bundle "res2" has 2 wires
+    And bundle "res4" has 1 wire
+    And bundle "res5" has 0 wires
+
+  Rule: Alternatives of a requirement are not duplicated in the result
+
+    Scenario: Two requirements for the same bundle pull in one version only
+      Given there is bundle "lib" version 1.0.0
+      And there is bundle "lib" version 2.0.0
+      And there is bundle "first"
+      And it requires bundle "lib"
+      And there is bundle "second"
+      And it requires bundle "lib" in version range "[1.0,3.0)"
+      When I resolve bundle "first" and bundle "second"
+      Then the resolution succeeds
+      And bundle "first" is wired to bundle "lib" version 2.0.0
+      And bundle "second" is wired to bundle "lib" version 2.0.0
+      And the resolved bundles are exactly "first, second, lib"
+
+    Scenario: A package import is wired to the version of the bundle that is required already
+      Given there is bundle "lib" version 1.0.0
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "lib" version 2.0.0
+      And it exports package "p" in version "1.0.0"
+      And there is bundle "first"
+      And it requires bundle "lib" in version range "[1.0,2.0)"
+      And there is bundle "second"
+      And it imports package "p"
+      When I resolve bundle "first" and bundle "second"
+      Then the resolution succeeds
+      And bundle "first" is wired to bundle "lib" version 1.0.0
+      And bundle "second" is wired to bundle "lib" version 1.0.0 for package "p"
+      And the resolved bundles are exactly "first, second, lib"
+
+  Rule: A dependency without a range resolves to the highest available version
+    A bundle that stands for a group of bundles, a feature, requires the bundles of its content and the features it depends on.
+
+    Background:
+      Given there is bundle "dep" version 1.0.0
+      And there is bundle "dep" version 2.0.0
+
+    Scenario: The highest version of a feature dependency is chosen
+      Given there is bundle "f1"
+      And it requires bundle "dep"
+      When I resolve bundle "f1"
+      Then the resolution succeeds
+      And bundle "f1" is wired to bundle "dep" version 2.0.0
+
+    Scenario: A version range restricts the chosen feature dependency
+      Given there is bundle "f1"
+      And it requires bundle "dep" in version range "[1.0,2.0)"
+      When I resolve bundle "f1"
+      Then the resolution succeeds
+      And bundle "f1" is wired to bundle "dep" version 1.0.0
+
+  Rule: Ranges along a chain of features select one consistent set of versions
+
+    Background:
+      Given there is bundle "lib" version 3.1.4
+      And there is bundle "lib-web" version 3.1.4
+      And it requires bundle "lib" in version range "[3.1.4,3.2)"
+      And there is bundle "lib" version 3.2.14
+      And there is bundle "lib-web" version 3.2.14
+      And it requires bundle "lib" in version range "[3.2.14,3.3)"
+      And there is bundle "lib" version 4.0.7
+      And there is bundle "lib-web" version 4.0.7
+      And it requires bundle "lib" in version range "[4.0.7,4.1)"
+      And there is bundle "lib-dm" version 1.2.1
+      And it requires bundle "lib" in version range "[2.5.6,4)"
+      And there is bundle "lib-dm-web" version 1.2.1
+      And it requires bundle "lib-dm"
+      And it requires bundle "lib-web" in version range "[2.5.6,4)"
+
+    Scenario: The upper bounds of two features lead to the highest matching pair
+      When I resolve bundle "lib-dm-web"
+      Then the resolution succeeds
+      And bundle "lib-dm-web" is wired to bundle "lib-web" version 3.2.14
+      And bundle "lib-web" version 3.2.14 is wired to bundle "lib" version 3.2.14
+      And bundle "lib-dm" is wired to bundle "lib" version 3.2.14
+
+  Rule: Optional content is wired when it is available
+
+    Scenario: An optional feature is resolved when it is part of the request
+      Given there is bundle "f2"
+      And there is bundle "f1"
+      And it optionally requires bundle "f2"
+      When I resolve bundle "f1" and optionally bundle "f2"
+      Then the resolution succeeds
+      And bundle "f1" is wired to bundle "f2"
+
+    Scenario: An optional feature that is available is wired
+      Given there is bundle "f2"
+      And there is bundle "f1"
+      And it optionally requires bundle "f2"
+      When I resolve bundle "f1"
+      Then the resolution succeeds
+      And bundle "f1" is wired to bundle "f2"
