@@ -29,6 +29,7 @@ The repository is in its initial setup phase and grows module by module.
 
 | Module                           | Description                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------- |
+| [candidates](candidates)         | The graph of candidates a resolver decides on, with the state and reason of every decision  |
 | [diagnostics](diagnostics)       | Optional API through which a resolver explains the decisions of a resolve operation         |
 | [failures](failures)             | Specific resolution exceptions that tell why a resolve operation failed                     |
 | [index](index)                   | Resolver independent lookup structures over the resources and capabilities of a resolve     |
