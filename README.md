@@ -29,6 +29,7 @@ The repository is in its initial setup phase and grows module by module.
 
 | Module                           | Description                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------- |
+| [failures](failures)             | Specific resolution exceptions that tell why a resolve operation failed                     |
 | [index](index)                   | Resolver independent lookup structures over the resources and capabilities of a resolve     |
 | [verifier](verifier)             | Resolver independent checks that a resolve result is well formed and class space consistent |
 | [test-suite](test-suite)         | Cucumber scenarios that exercise a resolver through the OSGi Resolver Service API           |
