@@ -110,6 +110,17 @@ public class ResolveSteps {
         }
     }
 
+    /** Resolves with every described bundle as a bundle that is resolved if possible. */
+    @When("I resolve all bundles as optional resources")
+    public void iResolveAllOptionally() {
+        resolved = true;
+        try {
+            result = world.resolveAllOptionally();
+        } catch (ResolutionException e) {
+            failure = e;
+        }
+    }
+
     /** Resolves without any bundle that has to be resolved. */
     @When("I resolve nothing")
     public void iResolveNothing() {

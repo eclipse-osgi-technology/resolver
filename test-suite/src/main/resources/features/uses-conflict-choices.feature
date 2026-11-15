@@ -275,3 +275,58 @@ Feature: Resolving uses conflicts
       And bundle "consumer" is wired to bundle "impl" for capability in namespace "my.impl"
       And bundle "impl" is wired to bundle "p-1" for package "p"
       And bundle "consumer" is wired to bundle "p-1" for package "p"
+
+    Scenario: Two optional imports that would see different providers of a package leave one unwired
+      A bundle optionally imports a package that uses "matchers" from one provider and optionally imports "matchers" from another provider.
+      Wiring both would expose the bundle to two different providers of "matchers", so one of the optional imports has to stay unwired.
+      Which one is left unwired is not specified.
+      Given there is bundle "junit"
+      And it exports package "matchers" in version "1.3.0"
+      And it exports package "rules" using "matchers"
+      And there is bundle "hamcrest"
+      And it exports package "matchers" in version "2.2.0"
+      And there is bundle "assertj"
+      And it optionally imports package "rules"
+      And it optionally imports package "matchers" in version range "[2.2,3.0)"
+      When I resolve bundle "assertj"
+      Then the resolution succeeds
+      And bundle "assertj" is resolved
+      And bundle "assertj" is wired to bundle "hamcrest" for package "matchers"
+
+  Rule: A resource that can not be resolved does not take the resources it was tried with down
+    Optional resources are independent, the failure of one is no reason to leave out another.
+    A bundle that imports from two versions of a library, one of which dropped a package, can never get a consistent class space.
+
+    Background:
+      Given there is bundle "core-new"
+      And it exports package "codecs" in version "3.0.0"
+      And there is bundle "core-old"
+      And it exports package "codecs" in version "2.0.0"
+      And it exports package "codecs.old" in version "2.0.0" using "codecs"
+      And there is bundle "analysis"
+      And it imports package "codecs" in version range "[3.0,4.0)"
+      And it exports package "analysis" in version "3.0.0" using "codecs"
+      And there is bundle "legacy"
+      And it imports package "codecs" in version range "[2.0,4.0)"
+      And it imports package "codecs.old" in version range "[2.0,3.0)"
+      And it exports package "queries" in version "2.0.0" using "codecs"
+      And there is bundle "parser"
+      And it imports package "queries" in version range "[2.0,3.0)"
+      And it exports package "classic" in version "2.0.0" using "queries"
+      And there is bundle "mixed"
+      And it imports package "analysis"
+      And it imports package "classic"
+      And it imports package "codecs"
+
+    Scenario: The bundles that are consistent on their own are resolved, only the inconsistent one is left out
+      When I resolve all bundles as optional resources
+      Then the resolution succeeds
+      And bundle "legacy" is wired to bundle "core-old" for package "codecs.old"
+      And bundle "legacy" is wired to bundle "core-old" for package "codecs"
+      And bundle "parser" is resolved
+      And bundle "analysis" is wired to bundle "core-new" for package "codecs"
+      And bundle "mixed" is not resolved
+
+    Scenario: The inconsistent bundle fails with the conflict if it is the one that is needed
+      When I resolve bundle "mixed"
+      Then the resolution fails because of a uses constraint violation on package "codecs" for bundle "legacy"
