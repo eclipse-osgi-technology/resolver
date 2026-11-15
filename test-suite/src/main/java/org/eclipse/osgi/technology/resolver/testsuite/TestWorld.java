@@ -146,6 +146,19 @@ public class TestWorld {
     }
 
     /**
+     * Resolves with all bundles available and every one of them optional, like
+     * a framework that resolves what is installed.
+     *
+     * @return the wires of every resolved resource
+     * @throws ResolutionException if the resolve fails
+     */
+    public Map<Resource, List<Wire>> resolveAllOptionally() throws ResolutionException {
+        commit();
+        context = engine.createContext(available, List.of(), List.copyOf(available));
+        return engine.resolve(context);
+    }
+
+    /**
      * Returns the resolver under test.
      *
      * @return the engine
