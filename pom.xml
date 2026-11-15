@@ -33,6 +33,7 @@
 
   <modules>
     <module>candidates</module>
+    <module>classspace-rules</module>
     <module>diagnostics</module>
     <module>failures</module>
     <module>index</module>
