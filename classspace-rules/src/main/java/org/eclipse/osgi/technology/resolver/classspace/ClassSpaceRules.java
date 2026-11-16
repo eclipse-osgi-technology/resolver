@@ -84,7 +84,9 @@ public final class ClassSpaceRules {
         return all;
     }
 
-    /** The fragments that can be attached to a host, by host. */
+    /**
+     * The fragments that can be attached to a host, by host.
+     */
     private static Map<Resource, List<Resource>> fragmentsOf(Collection<? extends ResolverResource> resources) {
         Map<Resource, List<Resource>> fragments = new IdentityHashMap<>();
         for (ResolverResource fragment : resources) {
