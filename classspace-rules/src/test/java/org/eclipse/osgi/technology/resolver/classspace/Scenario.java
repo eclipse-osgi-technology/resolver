@@ -43,7 +43,9 @@ final class Scenario {
     private final Map<String, ResourceBuilder> builders = new LinkedHashMap<>();
     private final Map<String, ResolverResource> resources = new LinkedHashMap<>();
 
-    /** Starts the description of a bundle. */
+    /**
+     * Starts the description of a bundle.
+     */
     ResourceBuilder bundle(String name) {
         if (builders.containsKey(name)) {
             return builders.get(name);
@@ -54,7 +56,9 @@ final class Scenario {
         return builder;
     }
 
-    /** Attributes of an exported package that uses other packages. */
+    /**
+     * Attributes of an exported package that uses other packages.
+     */
     static Attrs uses(String... packages) {
         return Attrs.create("uses:", String.join(",", packages));
     }
@@ -81,7 +85,10 @@ final class Scenario {
         }
     }
 
-    /** Selects the provider for the import of a package, every other candidate is deferred. */
+    /**
+     * Selects the provider for the import of a package, every other candidate
+     * is deferred.
+     */
     void select(String importer, String packageName, String provider) {
         ResolverRequirement requirement = importOf(importer, packageName);
         for (Candidate candidate : requirement.getCandidates()) {
@@ -104,7 +111,9 @@ final class Scenario {
         throw new IllegalArgumentException(importer + " does not import " + packageName);
     }
 
-    /** What a resolver may choose from, the capabilities offered in the graph. */
+    /**
+     * What a resolver may choose from, the capabilities offered in the graph.
+     */
     CandidateSource candidates() {
         build();
         return new CandidateSource() {

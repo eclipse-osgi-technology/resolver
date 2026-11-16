@@ -28,7 +28,9 @@ class SubstitutionRuleTest {
 
     private final Scenario scenario = new Scenario();
 
-    /** The bundle sub exports and imports p, provider exports p, user imports p. */
+    /**
+     * The bundle sub exports and imports p, provider exports p, user imports p.
+     */
     private void substitutableExport() {
         scenario.bundle("provider").addExportPackage("p", new Attrs());
         scenario.bundle("sub").addExportPackage("p", new Attrs());

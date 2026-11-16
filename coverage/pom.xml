@@ -57,6 +57,11 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.osgi-technology.resolver</groupId>
+      <artifactId>resolve-phases</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.osgi-technology.resolver</groupId>
       <artifactId>verifier</artifactId>
       <version>${project.version}</version>
     </dependency>

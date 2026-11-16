@@ -28,7 +28,9 @@ class UsesRuleTest {
 
     private final Scenario scenario = new Scenario();
 
-    /** The exporter a imports q and exports p that uses q, b imports p and q. */
+    /**
+     * The exporter a imports q and exports p that uses q, b imports p and q.
+     */
     private void exporterOfPThatUsesQ() {
         scenario.bundle("q1").addExportPackage("q", new Attrs());
         scenario.bundle("q2").addExportPackage("q", new Attrs());
