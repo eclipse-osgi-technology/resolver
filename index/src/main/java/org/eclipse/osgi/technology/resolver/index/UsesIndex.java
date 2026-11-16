@@ -53,6 +53,7 @@ public final class UsesIndex {
     private final Map<Resource, Map<String, List<Requirement>>> importsByName = new IdentityHashMap<>();
     private final Map<Resource, Set<Resource>> importersOf = new IdentityHashMap<>();
     private final Map<Resource, List<Requirement>> imports = new IdentityHashMap<>();
+    private final List<Resource> indexed = new ArrayList<>();
     private final Map<Resource, List<Requirement>> bundles = new IdentityHashMap<>();
     private final Map<Resource, List<Requirement>> generics = new IdentityHashMap<>();
     private final Map<String, Set<Capability>> providers = new HashMap<>();
@@ -164,6 +165,7 @@ public final class UsesIndex {
         }
         importsByName.put(resource, byName);
         imports.put(resource, all);
+        indexed.add(resource);
         bundles.put(resource, required);
         generics.put(resource, generic);
     }
@@ -235,13 +237,15 @@ public final class UsesIndex {
     }
 
     /**
-     * The resources that were expanded.
+     * The resources whose requirements were indexed.
+     * These are the resources the index was built for and every resource
+     * reached from them for which the {@code expand} predicate answered
+     * {@code true}.
      *
-     * @return the resources whose requirements are indexed, already resolved
-     * resources are not among them
+     * @return the indexed resources in the order they were found
      */
-    public Set<Resource> getIndexedResources() {
-        return Collections.unmodifiableSet(imports.keySet());
+    public List<Resource> getIndexedResources() {
+        return Collections.unmodifiableList(indexed);
     }
 
     /**

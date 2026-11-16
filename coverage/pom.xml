@@ -47,6 +47,11 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.osgi-technology.resolver</groupId>
+      <artifactId>conflicts</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.osgi-technology.resolver</groupId>
       <artifactId>index</artifactId>
       <version>${project.version}</version>
     </dependency>

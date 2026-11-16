@@ -31,6 +31,7 @@ The repository is in its initial setup phase and grows module by module.
 | ------------------------------------ | ------------------------------------------------------------------------------------------- |
 | [candidates](candidates)             | The graph of candidates a resolver decides on, with the state and reason of every decision  |
 | [classspace-rules](classspace-rules) | The rules for the uses directive and for package substitution over the candidate graph      |
+| [conflicts](conflicts)               | A pluggable strategy to resolve detected class space conflicts                              |
 | [diagnostics](diagnostics)           | Optional API through which a resolver explains the decisions of a resolve operation         |
 | [failures](failures)                 | Specific resolution exceptions that tell why a resolve operation failed                     |
 | [index](index)                       | Resolver independent lookup structures over the resources and capabilities of a resolve     |
