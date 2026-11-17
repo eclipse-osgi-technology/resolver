@@ -370,11 +370,11 @@ public class ResolverResource implements Resource {
      * @param violation the violation that prevents the resolution
      */
     public void markFailed(UsesViolation violation) {
-        if (violation.getHiddenImport() != null) {
+        violation.getHiddenImport().ifPresent(hidden -> {
             // the resource lacks a provider, there is nothing inconsistent
             // about its class space
-            this.failedRequirement = violation.getHiddenImport();
-        }
+            this.failedRequirement = hidden;
+        });
         this.usesViolation = violation;
         this.state = ResolveState.FAILED;
     }

@@ -39,7 +39,7 @@ class ClassSpaceRulesTest {
         Optional<UsesViolation> violation = scenario.classSpaceRules().violationOf(scenario.resource("user"));
 
         assertThat(violation).isPresent();
-        assertThat(violation.get().getHiddenImport()).isSameAs(scenario.importOf("user", "p"));
+        assertThat(violation.get().getHiddenImport()).containsSame(scenario.importOf("user", "p"));
     }
 
     @Test

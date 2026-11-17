@@ -48,7 +48,7 @@ class SubstitutionRuleTest {
 
         assertThat(violation).isPresent();
         assertThat(violation.get().getPackageName()).isEqualTo("p");
-        assertThat(violation.get().getHiddenImport()).isSameAs(scenario.importOf("user", "p"));
+        assertThat(violation.get().getHiddenImport()).containsSame(scenario.importOf("user", "p"));
         assertThat(violation.get().getConflicting()).extracting(ResolverCapability::getOwner)
                 .containsExactly(scenario.resource("sub"), scenario.resource("provider"));
     }

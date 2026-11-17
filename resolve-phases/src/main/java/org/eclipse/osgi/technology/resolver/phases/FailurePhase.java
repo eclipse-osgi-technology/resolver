@@ -11,13 +11,16 @@ package org.eclipse.osgi.technology.resolver.phases;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverCapability;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
+import org.eclipse.osgi.technology.resolver.candidates.UsesChain;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
 import org.eclipse.osgi.technology.resolver.failures.ExportSubstitutedException;
 import org.eclipse.osgi.technology.resolver.failures.UnsatisfiedRequirementException;
@@ -51,12 +54,12 @@ public final class FailurePhase {
                 for (ResolverCapability capability : violation.getConflicting()) {
                     conflicting.add(capability.getDeclared());
                 }
-                if (violation.getHiddenImport() != null) {
-                    return new ExportSubstitutedException(violation.getHiddenImport().unwrap(), conflicting.get(0),
-                            conflicting.get(1));
+                Optional<ResolverRequirement> hidden = violation.getHiddenImport();
+                if (hidden.isPresent()) {
+                    return new ExportSubstitutedException(hidden.get().unwrap(), conflicting.get(0), conflicting.get(1));
                 }
                 return new UsesConstraintViolationException(violation.getPackageName(), resource.unwrap(), conflicting,
-                        new ArrayList<Requirement>());
+                        choices(violation));
             }
             ResolverRequirement requirement = resource.getFailedRequirement();
             ResolverResource next = null;
@@ -73,5 +76,19 @@ public final class FailurePhase {
             resource = next;
         }
         return new UnsatisfiedRequirementException(resource.getFailedRequirement().unwrap());
+    }
+
+    /**
+     * The requirements on the chains of the violation, each one a place where
+     * another provider would change what the resource sees.
+     */
+    private static List<Requirement> choices(UsesViolation violation) {
+        Set<Requirement> choices = new LinkedHashSet<>();
+        for (UsesChain chain : violation.getChains()) {
+            for (Optional<UsesChain> link = Optional.of(chain); link.isPresent(); link = link.get().getParent()) {
+                link.get().getRequirement().ifPresent(requirement -> choices.add(requirement.unwrap()));
+            }
+        }
+        return new ArrayList<>(choices);
     }
 }

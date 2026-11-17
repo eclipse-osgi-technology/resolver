@@ -15,6 +15,7 @@ import static org.eclipse.osgi.technology.resolver.classspace.Scenario.uses;
 import java.util.Optional;
 
 import org.eclipse.osgi.technology.resolver.candidates.ResolverCapability;
+import org.eclipse.osgi.technology.resolver.candidates.UsesChain;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
 import org.junit.jupiter.api.Test;
 
@@ -63,6 +64,54 @@ class UsesRuleTest {
         assertThat(violation.get().getPackageName()).isEqualTo("q");
         assertThat(violation.get().getConflicting()).extracting(ResolverCapability::getOwner)
                 .containsExactlyInAnyOrder(scenario.resource("q1"), scenario.resource("q2"));
+    }
+
+    @Test
+    void aViolationTellsWhatTheResourceSeesAndWhatTheCapabilitiesItSeesExpect() {
+        exporterOfPThatUsesQ();
+        scenario.select("a", "q", "q1");
+        scenario.select("b", "p", "a");
+        scenario.select("b", "q", "q2");
+
+        UsesViolation violation = scenario.usesRule()
+                .check(scenario.resource("b")).get();
+
+        assertThat(violation.getSeen()).extracting(ResolverCapability::getOwner)
+                .containsExactly(scenario.resource("q2"));
+        assertThat(violation.getImplied())
+                .extracting(ResolverCapability::getOwner)
+                .containsExactly(scenario.resource("q1"));
+        assertThat(violation.getChains()).extracting(
+                chain -> chain.getCapability().getOwner())
+                .containsExactly(scenario.resource("a"));
+    }
+
+    @Test
+    void aChainLeadsThroughTheRequirementsToTheCapabilityThatExpectsAnotherProvider() {
+        exporterOfPThatUsesQ();
+        scenario.bundle("c").addExportPackage("r", uses("p"));
+        scenario.bundle("c").addImportPackage("p", new Attrs());
+        scenario.bundle("d").addImportPackage("r", new Attrs());
+        scenario.bundle("d").addImportPackage("q", new Attrs());
+        scenario.select("a", "q", "q1");
+        scenario.select("c", "p", "a");
+        scenario.select("d", "r", "c");
+        scenario.select("d", "q", "q2");
+
+        UsesViolation violation = scenario.usesRule()
+                .check(scenario.resource("d")).get();
+
+        assertThat(violation.getChains()).hasSize(1);
+        UsesChain chain = violation.getChains().get(0);
+        assertThat(chain.getCapability().getOwner())
+                .isSameAs(scenario.resource("a"));
+        assertThat(chain.getViewer()).isSameAs(scenario.resource("c"));
+        assertThat(chain.getParent().get().getCapability().getOwner())
+                .isSameAs(scenario.resource("c"));
+        assertThat(chain.getParent().get().getParent()).isEmpty();
+        assertThat(chain.getRequirement()).containsSame(scenario.importOf("c", "p"));
+        assertThat(chain.getParent().get().getRequirement())
+                .containsSame(scenario.importOf("d", "r"));
     }
 
     @Test

@@ -10,6 +10,7 @@
 package org.eclipse.osgi.technology.resolver.classspace;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 import org.eclipse.osgi.technology.resolver.candidates.ResolverCapability;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
+import org.eclipse.osgi.technology.resolver.candidates.UsesChain;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
 import org.eclipse.osgi.technology.resolver.index.UsesIndex;
 import org.osgi.framework.namespace.PackageNamespace;
@@ -58,21 +60,23 @@ public final class UsesRule {
         List<ResolverCapability> twice = resource.getConflictingImports();
         if (!twice.isEmpty()) {
             return Optional.of(new UsesViolation(
-                    String.valueOf(twice.get(0).getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)), twice));
+                    String.valueOf(twice.get(0).getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)), twice,
+                    Optional.empty(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
         }
-        Map<String, List<List<ResolverCapability>>> sources = new LinkedHashMap<>();
+        Map<String, Map<List<ResolverCapability>, List<UsesChain>>> sources = new LinkedHashMap<>();
         Map<Capability, Boolean> visited = new LinkedHashMap<>();
         for (ResolverCapability capability : resource.getSeenCapabilities()) {
-            collect(capability, sources, visited);
+            collect(resource, capability, null, sources, visited);
         }
-        for (Map.Entry<String, List<List<ResolverCapability>>> entry : sources.entrySet()) {
+        for (Map.Entry<String, Map<List<ResolverCapability>, List<UsesChain>>> entry : sources.entrySet()) {
             List<ResolverCapability> seen = resource.getPackageSources(entry.getKey());
             // implied packages only constrain what the resource imports,
             // exports or requires itself, they are no imports
             if (seen.isEmpty()) {
                 continue;
             }
-            for (List<ResolverCapability> implied : entry.getValue()) {
+            for (Map.Entry<List<ResolverCapability>, List<UsesChain>> expected : entry.getValue().entrySet()) {
+                List<ResolverCapability> implied = expected.getKey();
                 if (!compatible(seen, implied)) {
                     Map<Capability, ResolverCapability> all = new LinkedHashMap<>();
                     for (ResolverCapability capability : implied) {
@@ -81,7 +85,8 @@ public final class UsesRule {
                     for (ResolverCapability capability : seen) {
                         all.put(capability.getDeclared(), capability);
                     }
-                    return Optional.of(new UsesViolation(entry.getKey(), new ArrayList<>(all.values())));
+                    return Optional.of(new UsesViolation(entry.getKey(), new ArrayList<>(all.values()), Optional.empty(), seen, implied,
+                        expected.getValue()));
                 }
             }
         }
@@ -110,11 +115,13 @@ public final class UsesRule {
         return seenFrom.keySet().containsAll(impliedFrom.keySet()) || impliedFrom.keySet().containsAll(seenFrom.keySet());
     }
 
-    private void collect(ResolverCapability capability, Map<String, List<List<ResolverCapability>>> sources,
+    private void collect(ResolverResource viewer, ResolverCapability capability, UsesChain parent,
+            Map<String, Map<List<ResolverCapability>, List<UsesChain>>> sources,
             Map<Capability, Boolean> visited) {
         if (visited.put(capability.getDeclared(), Boolean.TRUE) != null) {
             return;
         }
+        UsesChain chain = new UsesChain(viewer, capability, parent);
         ResolverResource owner = capability.getOwner();
         // a chain of uses that never reaches a package with more than one
         // possible provider is consistent whatever is selected
@@ -133,13 +140,11 @@ public final class UsesRule {
                 continue;
             }
             if (index.isContested(name)) {
-                List<List<ResolverCapability>> known = sources.computeIfAbsent(name, k -> new ArrayList<>());
-                if (!known.contains(owned)) {
-                    known.add(owned);
-                }
+                sources.computeIfAbsent(name, k -> new LinkedHashMap<>())
+                        .computeIfAbsent(owned, k -> new ArrayList<>()).add(chain);
             }
             for (ResolverCapability source : owned) {
-                collect(source, sources, visited);
+                collect(owner, source, chain, sources, visited);
             }
         }
     }

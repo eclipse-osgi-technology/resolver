@@ -10,6 +10,7 @@
 package org.eclipse.osgi.technology.resolver.classspace;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
@@ -71,7 +72,9 @@ public final class SubstitutionRule {
                 if (substitute.isPresent()) {
                     return Optional.of(new UsesViolation(
                             String.valueOf(candidate.getCapability().getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)),
-                            Arrays.asList(candidate.getCapability(), substitute.get()), requirement));
+                            Arrays.asList(candidate.getCapability(), substitute.get()),
+                            Optional.of(requirement), Collections.emptyList(), Collections.emptyList(),
+                            Collections.emptyList()));
                 }
             }
         }
