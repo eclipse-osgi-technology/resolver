@@ -88,14 +88,13 @@ public final class ResolverUsesSession implements UsesSession {
 
     @Override
     public void fail(ResolverResource resource, UsesViolation violation) {
-        ResolverRequirement hidden = violation.getHiddenImport();
-        if (hidden != null) {
+        violation.getHiddenImport().ifPresent(hidden -> {
             for (Candidate candidate : hidden.getCandidates()) {
                 if (candidate.getState() == CandidateState.SELECTED) {
                     candidate.reject("Not usable, " + violation);
                 }
             }
-        }
+        });
         resource.markFailed(violation);
     }
 

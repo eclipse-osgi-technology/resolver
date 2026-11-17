@@ -12,6 +12,7 @@ package org.eclipse.osgi.technology.resolver.candidates;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Why a resource can not be resolved: it would see a package from different
@@ -21,45 +22,79 @@ public class UsesViolation {
 
     private final String packageName;
     private final List<ResolverCapability> conflicting;
-    private final ResolverRequirement hidden;
+    private final Optional<ResolverRequirement> hidden;
+    private final List<ResolverCapability> seen;
+    private final List<ResolverCapability> implied;
+    private final List<UsesChain> chains;
 
     /**
-     * Creates a violation about a package that is seen from different
-     * providers.
-     *
-     * @param packageName the name of the inconsistent package
-     * @param conflicting the capabilities of the package that would have to be
-     *     seen at once
-     */
-    public UsesViolation(String packageName, List<ResolverCapability> conflicting) {
-        this(packageName, conflicting, null);
-    }
-
-    /**
-     * Creates a violation about an import whose selected export is discarded by
-     * substitution.
+     * Creates a violation.
      *
      * @param packageName the name of the inconsistent package
      * @param conflicting the capabilities of the package that would have to be
      *     seen at once
      * @param hidden the import of a package whose selected export is discarded
-     *     by substitution, see {@link #getHiddenImport()}
+     *     by substitution, empty for the other violations, see
+     *     {@link #getHiddenImport()}
+     * @param seen the capabilities the resource sees the package from, empty if
+     *     the violation does not tell
+     * @param implied the capabilities of the package the owners of the chains
+     *     see, empty if the violation does not tell
+     * @param chains why the resource sees the capabilities that use the package
+     *     and expect it from {@code implied}, empty if the violation does not
+     *     tell
      */
-    public UsesViolation(String packageName, List<ResolverCapability> conflicting, ResolverRequirement hidden) {
+    public UsesViolation(String packageName,
+            List<ResolverCapability> conflicting,
+            Optional<ResolverRequirement> hidden, List<ResolverCapability> seen,
+            List<ResolverCapability> implied, List<UsesChain> chains) {
         this.packageName = packageName;
-        this.conflicting = Collections.unmodifiableList(new ArrayList<>(conflicting));
+        this.conflicting = Collections
+                .unmodifiableList(new ArrayList<>(conflicting));
         this.hidden = hidden;
+        this.seen = Collections.unmodifiableList(new ArrayList<>(seen));
+        this.implied = Collections.unmodifiableList(new ArrayList<>(implied));
+        this.chains = Collections.unmodifiableList(new ArrayList<>(chains));
+    }
+
+    /**
+     * What the resource itself sees of the package.
+     *
+     * @return the capabilities, empty if the violation does not tell
+     */
+    public List<ResolverCapability> getSeen() {
+        return seen;
+    }
+
+    /**
+     * What the capabilities at the end of the {@link #getChains() chains} see of the package and therefore expect,
+     * which is not what the resource sees.
+     *
+     * @return the capabilities, empty if the violation does not tell
+     */
+    public List<ResolverCapability> getImplied() {
+        return implied;
+    }
+
+    /**
+     * Why the resource sees the capabilities that use the package and expect it from {@link #getImplied()}.
+     * The requirements on the chains are where a different choice resolves the conflict.
+     *
+     * @return one chain for each such capability, empty if the violation does not tell
+     */
+    public List<UsesChain> getChains() {
+        return chains;
     }
 
     /**
      * The import that is wired to an export that its exporter discards by
-     * substitution, {@code null} if the violation is about a package seen from
+     * substitution, empty if the violation is about a package seen from
      * different providers. Such a resource lacks a provider rather than having
      * an inconsistent class space.
      *
-     * @return the import or {@code null}
+     * @return the import, empty for the other violations
      */
-    public ResolverRequirement getHiddenImport() {
+    public Optional<ResolverRequirement> getHiddenImport() {
         return hidden;
     }
 
@@ -83,7 +118,7 @@ public class UsesViolation {
 
     @Override
     public String toString() {
-        if (hidden != null) {
+        if (hidden.isPresent()) {
             return "the export of package " + packageName + " of " + conflicting.get(0).getDeclaringResource().getName()
                     + " is discarded, it imports the package from " + conflicting.get(1).getOwner().getName();
         }

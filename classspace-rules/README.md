@@ -23,6 +23,11 @@ The `SubstitutionIndex` of the `index` module knows up front which exports can b
 
 Both rules wrap the index they read and return a `UsesViolation` of the `candidates` module for the first problem they find wrapped in an `Optional`, which is empty if the class space is consistent, and never change the graph.
 
+A `UsesViolation` tells more than the package that is inconsistent: `getSeen` is what the resource sees of the package, `getImplied` what the capabilities at the end of the chains see of it and therefore expect.
+`getChains` returns a `UsesChain` for each of them, which tells why the resource sees that capability: its viewer, the capability, the chain of the capability whose `uses` led there (`getParent`) and the requirement of the viewer it is seen through (`getRequirement`, looked up when asked).
+The requirements along a chain are the places where a different provider changes the view.
+The rule records this while it walks, nothing is computed for it, so a strategy learns which capabilities expect the other provider and through which providers the resource reaches them without walking the graph again.
+
 `ClassSpaceRules`
 : Composes both rules over a set of `ResolverResource`s, which together with their candidates form the candidate graph, and the subset of them that has to be resolved.
 It builds the `SubstitutionIndex` (over the included candidates, with the mandatory resources as certain) and the `UsesIndex` itself, and `violationOf` reports a discarded export before a uses violation.

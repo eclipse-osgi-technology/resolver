@@ -157,6 +157,9 @@ class PhasedResolverTest {
                         .isInstanceOfSatisfying(UsesConstraintViolationException.class, failure -> {
                             assertThat(failure.getPackageName()).isEqualTo("api");
                             assertThat(failure.getResource()).isSameAs(clientResource);
+                            assertThat(failure.getUnresolvedRequirements())
+                                    .extracting(requirement -> requirement.getResource())
+                                    .contains(clientResource);
                         });
         assertThat(strategy.calls).isEqualTo(1);
     }
