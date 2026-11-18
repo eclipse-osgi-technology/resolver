@@ -27,18 +27,19 @@ Our test suite is intended to be usable against these implementations as well, s
 
 The repository is in its initial setup phase and grows module by module.
 
-| Module                               | Description                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------- |
-| [candidates](candidates)             | The graph of candidates a resolver decides on, with the state and reason of every decision  |
-| [classspace-rules](classspace-rules) | The rules for the uses directive and for package substitution over the candidate graph      |
-| [conflicts](conflicts)               | A pluggable strategy to resolve detected class space conflicts                              |
-| [diagnostics](diagnostics)           | Optional API through which a resolver explains the decisions of a resolve operation         |
-| [failures](failures)                 | Specific resolution exceptions that tell why a resolve operation failed                     |
-| [index](index)                       | Resolver independent lookup structures over the resources and capabilities of a resolve     |
-| [resolve-phases](resolve-phases)     | The phases of a resolve operation, detected class space conflicts are left to a strategy    |
-| [verifier](verifier)                 | Resolver independent checks that a resolve result is well formed and class space consistent |
-| [test-suite](test-suite)             | Cucumber scenarios that exercise a resolver through the OSGi Resolver Service API           |
-| [felix-resolver](felix-resolver)     | Runs the test suite against the Apache Felix resolver                                       |
+| Module                                       | Description                                                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [candidates](candidates)                     | The graph of candidates a resolver decides on, with the state and reason of every decision  |
+| [classspace-rules](classspace-rules)         | The rules for the uses directive and for package substitution over the candidate graph      |
+| [conflicts](conflicts)                       | A pluggable strategy to resolve detected class space conflicts                              |
+| [diagnostics](diagnostics)                   | Optional API through which a resolver explains the decisions of a resolve operation         |
+| [failures](failures)                         | Specific resolution exceptions that tell why a resolve operation failed                     |
+| [index](index)                               | Resolver independent lookup structures over the resources and capabilities of a resolve     |
+| [resolve-phases](resolve-phases)             | The phases of a resolve operation, detected class space conflicts are left to a strategy    |
+| [resolver-permutation](resolver-permutation) | A resolver that decides class space conflicts by permutation like the Felix resolver        |
+| [verifier](verifier)                         | Resolver independent checks that a resolve result is well formed and class space consistent |
+| [test-suite](test-suite)                     | Cucumber scenarios that exercise a resolver through the OSGi Resolver Service API           |
+| [felix-resolver](felix-resolver)             | Runs the test suite against the Apache Felix resolver                                       |
 
 Build with JDK 25 and `mvn verify`.
 
