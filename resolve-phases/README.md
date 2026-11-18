@@ -58,6 +58,12 @@ public final class MyResolver extends PhasedResolver {
 }
 ```
 
+A fragment is attached to every host it can be, a fragment is never required, so the resolver is free to leave it out.
+If a class space is inconsistent because a hosted capability or a requirement of a fragment is part of the violation, `ResolveOperation` excludes the fragment from that host and runs the phases again, with a new strategy.
+The strategies therefore do not decide about fragments, and every round excludes at least one attachment, so the rounds are bounded.
+A fragment that the resolve context asked for is never excluded, the resolve fails with a `FragmentConflictException` that names the fragment and its host.
+The explanation of the fragment tells which host it was not attached to and why.
+
 A resolver that needs other behavior calls the phases itself, `ResolveOperation` is the reference for the order.
 Every phase works on the `ResolverGraph` and records what it decides in the candidate graph, so the explanation of a result, a failure or a diagnostic, is derived from there and can not deviate from what was decided.
 

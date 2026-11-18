@@ -29,6 +29,11 @@ The module has no dependencies besides the OSGi core APIs and is compiled for Ja
 : No consistent class space exists, a resource would see a package from different providers because of the `uses` directive of an exported package.
   `getPackageName()`, `getResource()` and `getConflictingCapabilities()` tell which package, who sees it and which exports would have to be seen at once.
 
+`FragmentConflictException`
+: A subtype of `UsesConstraintViolationException`.
+  The violation is caused by a fragment that was asked for explicitly, so it can not be left out.
+  `getFragment()` is the fragment to blame and `getHost()` the host it makes inconsistent.
+
 ```java
 try {
     resolver.resolve(context);

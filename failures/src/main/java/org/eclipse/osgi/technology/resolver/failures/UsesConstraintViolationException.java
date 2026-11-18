@@ -30,6 +30,14 @@ public class UsesConstraintViolationException extends ResolutionException {
     private final transient Resource resource;
     private final transient Collection<Capability> conflictingCapabilities;
 
+    /**
+     * Creates the exception.
+     *
+     * @param packageName the package seen from different providers
+     * @param resource the resource that sees the package inconsistently
+     * @param conflictingCapabilities the exports that would have to be seen at once
+     * @param unresolved the requirements that could be changed to avoid the conflict
+     */
     public UsesConstraintViolationException(String packageName, Resource resource,
             Collection<Capability> conflictingCapabilities, Collection<Requirement> unresolved) {
         super("Uses constraint violation on package " + packageName + " for " + resource, null, unresolved);
@@ -38,17 +46,29 @@ public class UsesConstraintViolationException extends ResolutionException {
         this.conflictingCapabilities = Collections.unmodifiableCollection(new ArrayList<Capability>(conflictingCapabilities));
     }
 
-    /** The package that would be seen from different providers. */
+    /**
+     * The package that would be seen from different providers.
+     *
+     * @return the package name
+     */
     public String getPackageName() {
         return packageName;
     }
 
-    /** The resource that would see the package inconsistently. */
+    /**
+     * The resource that would see the package inconsistently.
+     *
+     * @return the resource
+     */
     public Resource getResource() {
         return resource;
     }
 
-    /** The different exports of the package that would have to be seen at once. */
+    /**
+     * The different exports of the package that would have to be seen at once.
+     *
+     * @return the conflicting exports
+     */
     public Collection<Capability> getConflictingCapabilities() {
         return conflictingCapabilities;
     }

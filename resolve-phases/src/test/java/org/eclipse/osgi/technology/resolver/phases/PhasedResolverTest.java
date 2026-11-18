@@ -20,6 +20,7 @@ import static org.eclipse.osgi.technology.resolver.phases.Bundles.optional;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.osgi.technology.resolver.failures.FragmentConflictException;
 import org.eclipse.osgi.technology.resolver.failures.UnsatisfiedRequirementException;
 import org.eclipse.osgi.technology.resolver.failures.UsesConstraintViolationException;
 import org.junit.jupiter.api.Test;
@@ -184,5 +185,130 @@ class PhasedResolverTest {
 
         assertThat(context.published).singleElement().satisfies(diagnostics -> assertThat(
                 diagnostics.getMessage(consumer)).hasValueSatisfying(message -> assertThat(message).contains("api")));
+    }
+
+    private static Resource hostImporting(String range) {
+        ResourceBuilder builder = bundle("host");
+        builder.addImportPackage("api", importing(range));
+        return builder.build();
+    }
+
+    private static Resource fragmentImporting(String name, String range) {
+        ResourceBuilder builder = fragment(name, "1.0.0", "host");
+        builder.addImportPackage("api", importing(range));
+        return builder.build();
+    }
+
+    @Test
+    void aFragmentThatMakesItsHostInconsistentIsNotAttachedToIt() throws ResolutionException {
+        Resource host = hostImporting("[2,3)");
+        Resource fragment = fragmentImporting("frag", "[1,2)");
+        Resource api2 = api("2.0.0");
+        TestContext context = TestContext.resolving(host).offering(api("1.0.0"), api2).optionally(fragment);
+
+        Map<Resource, List<Wire>> wires = resolver.resolve(context);
+
+        assertThat(wires.get(host)).singleElement().satisfies(wire -> assertThat(wire.getProvider()).isSameAs(api2));
+        assertThat(wires).doesNotContainKey(fragment);
+        assertThat(strategy.calls).isEqualTo(2);
+        assertThat(context.published).singleElement().satisfies(diagnostics -> assertThat(
+                diagnostics.getMessage(fragment)).hasValueSatisfying(message -> assertThat(message).contains("Not attached to the inconsistent host")));
+    }
+
+    @Test
+    void everyFragmentThatTakesPartInTheConflictIsLeftOutInOneRound() throws ResolutionException {
+        Resource host = hostImporting("[2,3)");
+        Resource first = fragmentImporting("first", "[1,2)");
+        Resource second = fragmentImporting("second", "[1,2)");
+
+        Map<Resource, List<Wire>> wires = resolver
+                .resolve(TestContext.resolving(host).offering(api("1.0.0"), api("2.0.0")).optionally(first, second));
+
+        assertThat(wires).containsKey(host).doesNotContainKeys(first, second);
+        assertThat(strategy.calls).isEqualTo(2);
+    }
+
+    @Test
+    void aHostedCapabilityThatMakesAnotherResourceInconsistentIsNotProvided() throws ResolutionException {
+        Resource host = bundle("host").build();
+        ResourceBuilder fragmentBuilder = fragment("frag", "1.0.0", "host");
+        fragmentBuilder.addExportPackage("p", export("1.0.0", "api"));
+        fragmentBuilder.addImportPackage("api", importing("[2,3)"));
+        Resource fragment = fragmentBuilder.build();
+        ResourceBuilder clientBuilder = bundle("client");
+        clientBuilder.addImportPackage("p", optional("[1,2)"));
+        clientBuilder.addImportPackage("api", importing("[1,2)"));
+        Resource client = clientBuilder.build();
+        Resource api1 = api("1.0.0");
+
+        Map<Resource, List<Wire>> wires = resolver.resolve(
+                TestContext.resolving(client).offering(host, fragment, api1, api("2.0.0")));
+
+        assertThat(wires.get(client)).extracting(Wire::getProvider).containsExactly(api1);
+        assertThat(wires).doesNotContainKey(fragment);
+        assertThat(strategy.calls).isEqualTo(2);
+    }
+
+    @Test
+    void aResourceThatNeedsAFragmentThatWasLeftOutFailsWithTheConflictOfTheHost() {
+        Resource host = hostImporting("[2,3)");
+        ResourceBuilder fragmentBuilder = fragment("frag", "1.0.0", "host");
+        fragmentBuilder.addImportPackage("api", importing("[1,2)"));
+        fragmentBuilder.addExportPackage("foo", export("1.0.0"));
+        ResourceBuilder importerBuilder = bundle("importer");
+        importerBuilder.addImportPackage("foo", importing("[1,2)"));
+        Resource importer = importerBuilder.build();
+
+        assertThatThrownBy(() -> resolver.resolve(TestContext.resolving(host, importer)
+                .offering(api("1.0.0"), api("2.0.0")).optionally(fragmentBuilder.build())))
+                        .isInstanceOfSatisfying(UsesConstraintViolationException.class,
+                                e -> assertThat(e.getResource()).isSameAs(host));
+        assertThat(strategy.calls).isEqualTo(2);
+    }
+
+    @Test
+    void aFragmentThatWasAskedForIsNeverLeftOut() {
+        Resource host = hostImporting("[2,3)");
+        Resource fragment = fragmentImporting("frag", "[1,2)");
+
+        assertThatThrownBy(() -> resolver
+                .resolve(TestContext.resolving(host, fragment).offering(api("1.0.0"), api("2.0.0"))))
+                        .isInstanceOfSatisfying(FragmentConflictException.class, e -> {
+                            assertThat(e.getFragment()).isSameAs(fragment);
+                            assertThat(e.getHost()).isSameAs(host);
+                            assertThat(e.getPackageName()).isEqualTo("api");
+                        });
+        assertThat(strategy.calls).isEqualTo(1);
+    }
+
+    @Test
+    void aFragmentThatCanNotBeResolvedIsNotAttachedAndDoesNotRestartTheResolve() throws ResolutionException {
+        Resource host = hostImporting("[1,2)");
+        ResourceBuilder builder = fragment("frag", "1.0.0", "host");
+        builder.addImportPackage("missing", importing("[1,2)"));
+        Resource fragment = builder.build();
+
+        Map<Resource, List<Wire>> wires = resolver
+                .resolve(TestContext.resolving(host).offering(api("1.0.0")).optionally(fragment));
+
+        assertThat(wires).containsKey(host).doesNotContainKey(fragment);
+        assertThat(strategy.calls).isEqualTo(1);
+    }
+
+    @Test
+    void aFragmentThatTakesNoPartInTheConflictIsKept() {
+        ResourceBuilder exporter = bundle("exporter");
+        exporter.addExportPackage("p", export("1.0.0", "api"));
+        exporter.addImportPackage("api", importing("[1,2)"));
+        ResourceBuilder hostBuilder = bundle("host");
+        hostBuilder.addImportPackage("p", importing("[1,2)"));
+        hostBuilder.addImportPackage("api", importing("[2,3)"));
+        ResourceBuilder innocent = fragment("frag", "1.0.0", "host");
+        innocent.addExportPackage("other", export("1.0.0"));
+
+        assertThatThrownBy(() -> resolver.resolve(TestContext.resolving(hostBuilder.build()).offering(exporter.build(),
+                api("1.0.0"), api("2.0.0")).optionally(innocent.build())))
+                        .isInstanceOf(UsesConstraintViolationException.class);
+        assertThat(strategy.calls).isEqualTo(1);
     }
 }
