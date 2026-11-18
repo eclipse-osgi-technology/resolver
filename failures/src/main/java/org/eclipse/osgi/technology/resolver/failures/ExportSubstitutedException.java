@@ -25,6 +25,13 @@ public class ExportSubstitutedException extends UnsatisfiedRequirementException 
     private final transient Capability export;
     private final transient Capability substitute;
 
+    /**
+     * Creates the exception.
+     *
+     * @param requirement the requirement that can not be satisfied
+     * @param export the export that is discarded
+     * @param substitute the capability the exporter is wired to instead
+     */
     public ExportSubstitutedException(Requirement requirement, Capability export, Capability substitute) {
         super(requirement, "Requirement " + requirement + " can only be satisfied by " + export
                 + ", that is discarded as its exporter imports the package from " + substitute);
@@ -32,12 +39,20 @@ public class ExportSubstitutedException extends UnsatisfiedRequirementException 
         this.substitute = substitute;
     }
 
-    /** The export the requirement could be wired to, it is discarded. */
+    /**
+     * The export the requirement could be wired to, it is discarded.
+     *
+     * @return the export
+     */
     public Capability getExport() {
         return export;
     }
 
-    /** The capability the exporter is wired to instead of its own export. */
+    /**
+     * The capability the exporter is wired to instead of its own export.
+     *
+     * @return the substitute
+     */
     public Capability getSubstitute() {
         return substitute;
     }

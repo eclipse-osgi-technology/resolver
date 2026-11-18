@@ -39,6 +39,7 @@ public final class FragmentAttachmentPhase {
 
     private final ResolveContext context;
     private final ResolverGraph graph;
+    private final ExcludedFragments excluded;
 
     /**
      * @param context the resolve context that decides where a hosted capability
@@ -46,8 +47,13 @@ public final class FragmentAttachmentPhase {
      * @param graph   the graph to change
      */
     public FragmentAttachmentPhase(ResolveContext context, ResolverGraph graph) {
+        this(context, graph, new ExcludedFragments());
+    }
+
+    FragmentAttachmentPhase(ResolveContext context, ResolverGraph graph, ExcludedFragments excluded) {
         this.context = context;
         this.graph = graph;
+        this.excluded = excluded;
     }
 
     /**
@@ -57,8 +63,30 @@ public final class FragmentAttachmentPhase {
      * {@link #attachSelectedFragments()}.
      */
     public void run() {
+        excludeFragments();
         selectFragments();
         hostCapabilities();
+    }
+
+    /**
+     * A fragment that makes a host inconsistent is not attached to that host,
+     * the host candidate is rejected.
+     */
+    private void excludeFragments() {
+        for (ResolverResource fragment : graph.getResources()) {
+            if (!fragment.isFragment()) {
+                continue;
+            }
+            for (ResolverRequirement requirement : fragment.getResolverRequirements()) {
+                if (!HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
+                    continue;
+                }
+                for (Candidate candidate : requirement.getCandidates()) {
+                    excluded.reasonFor(fragment.unwrap(), candidate.getProvider().unwrap())
+                            .ifPresent(candidate::reject);
+                }
+            }
+        }
     }
 
     /**
@@ -80,6 +108,9 @@ public final class FragmentAttachmentPhase {
             for (ResolverRequirement requirement : resource.getResolverRequirements()) {
                 if (requirement.isEffective() && HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
                     for (Candidate candidate : requirement.getCandidates()) {
+                        if (!candidate.isIncluded()) {
+                            continue;
+                        }
                         byHost.computeIfAbsent(candidate.getProvider(), k -> new LinkedHashMap<>())
                                 .computeIfAbsent(String.valueOf(resource.getIdentity()), k -> new ArrayList<>())
                                 .add(candidate);

@@ -24,6 +24,11 @@ public class UnsatisfiedRequirementException extends ResolutionException {
 
     private final transient Requirement requirement;
 
+    /**
+     * Creates the exception.
+     *
+     * @param requirement the requirement without any candidate
+     */
     public UnsatisfiedRequirementException(Requirement requirement) {
         this(requirement, "Unsatisfied requirement " + requirement);
     }
@@ -33,7 +38,11 @@ public class UnsatisfiedRequirementException extends ResolutionException {
         this.requirement = requirement;
     }
 
-    /** The requirement without any candidate, its resource is the one that can not be resolved. */
+    /**
+     * The requirement without any candidate, its resource is the one that can not be resolved.
+     *
+     * @return the requirement
+     */
     public Requirement getRequirement() {
         return requirement;
     }

@@ -36,7 +36,8 @@ public abstract class PhasedResolver implements Resolver {
 
     /**
      * Creates the strategy for a resolve. It may depend on the context, and is
-     * created per resolve so a strategy can keep state.
+     * created for every round of a resolve, a round runs again if a fragment is
+     * left out, so a strategy can keep state for the round it is asked in.
      *
      * @param context the context that is resolved
      * @return the strategy that resolves the detected class space
@@ -46,7 +47,7 @@ public abstract class PhasedResolver implements Resolver {
 
     @Override
     public Map<Resource, List<Wire>> resolve(ResolveContext context) throws ResolutionException {
-        ResolveOperation operation = new ResolveOperation(context, createStrategy(context));
+        ResolveOperation operation = new ResolveOperation(context, () -> createStrategy(context));
         try {
             return operation.resolve();
         } finally {
