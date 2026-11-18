@@ -62,6 +62,11 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.osgi-technology.resolver</groupId>
+      <artifactId>resolver-permutation</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.osgi-technology.resolver</groupId>
       <artifactId>verifier</artifactId>
       <version>${project.version}</version>
     </dependency>

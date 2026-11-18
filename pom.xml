@@ -39,6 +39,7 @@
     <module>failures</module>
     <module>index</module>
     <module>resolve-phases</module>
+    <module>resolver-permutation</module>
     <module>verifier</module>
     <module>test-suite</module>
     <module>felix-resolver</module>
