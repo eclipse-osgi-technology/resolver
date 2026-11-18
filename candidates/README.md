@@ -34,10 +34,16 @@ A deferred candidate is only used if the chosen one causes a conflict.
 `UsesViolation`
 : Why no consistent class space exists: the package, the resource that would see it and the capabilities it would see at once.
 
+`PackageViewCache`, `PackageView`
+: What a resource sees of the packages on the current selection of candidates: what it imports and exports, what it gets through required bundles and the combined sources of a package.
+The cache belongs to one resolve and is handed to all its resources, so the views of all resources are computed once and shared by every check until a candidate, a resolve state or the attached fragments change.
+Code that changes the graph in another way has to call `PackageViewCache#invalidate`.
+
 ## Thread safety
 
 The graph is not thread safe.
 Its structure is set up first and does not change afterwards, only the state does: the resolve state of a resource and the state of a candidate.
+The views of a `PackageViewCache` can be requested concurrently, but never while the state changes.
 The state is kept in plain fields, so a change must not overlap with any other access to the same object.
 Callers that work concurrently have to separate reading and changing into phases, with a happens-before edge between them, for example by waiting for all tasks of a phase before the next one starts.
 

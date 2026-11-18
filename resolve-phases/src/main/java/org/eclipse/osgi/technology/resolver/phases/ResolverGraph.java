@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.eclipse.osgi.technology.resolver.candidates.PackageViewCache;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.osgi.resource.Resource;
 
@@ -30,6 +31,16 @@ public final class ResolverGraph {
     private final Map<Resource, ResolverResource> resources = new LinkedHashMap<>();
     private final List<ResolverResource> mandatory = new ArrayList<>();
     private final List<ResolverResource> optional = new ArrayList<>();
+    private final PackageViewCache packageViewCache = new PackageViewCache();
+
+    /**
+     * The scope of the cached package lookups of the resources of this graph.
+     *
+     * @return the cache to create the resources with
+     */
+    public PackageViewCache getPackageViewCache() {
+        return packageViewCache;
+    }
 
     /**
      * All resources of the graph.

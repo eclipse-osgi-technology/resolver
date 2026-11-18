@@ -29,6 +29,7 @@ final class Graph {
 
     private final Map<String, ResourceBuilder> builders = new LinkedHashMap<>();
     private final Map<String, ResolverResource> resources = new LinkedHashMap<>();
+    private final PackageViewCache packageViewCache = new PackageViewCache();
 
     /**
      * Starts the description of a bundle that can be required and hosts
@@ -62,7 +63,7 @@ final class Graph {
 
     ResolverResource resource(String name) {
         if (resources.isEmpty()) {
-            builders.forEach((n, builder) -> resources.put(n, new ResolverResource(builder.build())));
+            builders.forEach((n, builder) -> resources.put(n, new ResolverResource(builder.build(), packageViewCache)));
         }
         return resources.get(name);
     }
