@@ -32,7 +32,7 @@ import org.osgi.service.resolver.ResolveContext;
  * reachable from their effective requirements through the providers the context
  * knows. Single threaded, the only phase that asks the context for providers.
  */
-public final class DiscoveryPhase {
+public final class DiscoveryPhase implements ResolverPhase<Void> {
 
     private final ResolveContext context;
     private final ResolverGraph graph;
@@ -50,7 +50,8 @@ public final class DiscoveryPhase {
      * Fills the graph, every requirement gets the candidates the context offers
      * for it.
      */
-    public void run() {
+    @Override
+    public Void run() {
         Deque<ResolverResource> queue = new ArrayDeque<>();
         for (Resource resource : context.getMandatoryResources()) {
             graph.addMandatory(resourceOf(resource, queue));
@@ -72,6 +73,7 @@ public final class DiscoveryPhase {
                 }
             }
         }
+        return null;
     }
 
     /**

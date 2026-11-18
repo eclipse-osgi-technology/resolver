@@ -24,7 +24,7 @@ import org.osgi.service.resolver.ResolutionException;
  * the graph of one attempt of a resolve, so it refers to the resources the
  * graph wraps.
  */
-final class ExcludedFragments {
+final class ExcludedFragments implements FragmentExclusions {
 
     private final Map<Resource, FragmentConflictException> conflicts = new LinkedHashMap<>();
     private final Map<Resource, ResolutionException> causes = new LinkedHashMap<>();
@@ -49,7 +49,8 @@ final class ExcludedFragments {
      * @param host the host
      * @return the reason, empty if the fragment may be attached
      */
-    Optional<String> reasonFor(Resource fragment, Resource host) {
+    @Override
+    public Optional<String> reasonFor(Resource fragment, Resource host) {
         return Optional.ofNullable(reasons.getOrDefault(fragment, Collections.emptyMap()).get(host));
     }
 

@@ -32,7 +32,7 @@ import org.osgi.framework.namespace.PackageNamespace;
  * why.</li>
  * </ol>
  */
-public final class ResolvabilityPhase {
+public final class ResolvabilityPhase implements ResolverPhase<Void> {
 
     private final ResolverGraph graph;
 
@@ -48,9 +48,11 @@ public final class ResolvabilityPhase {
      * resolved, an optimistic resolution the class space enforcement may still
      * take back, and selects the candidates to wire.
      */
-    public void run() {
+    @Override
+    public Void run() {
         check();
         select();
+        return null;
     }
 
     private void check() {

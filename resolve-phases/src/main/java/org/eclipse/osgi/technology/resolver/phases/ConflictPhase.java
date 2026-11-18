@@ -15,7 +15,7 @@ import org.eclipse.osgi.technology.resolver.conflicts.UsesConflictStrategy;
  * Lets a {@link UsesConflictStrategy} resolve the class space conflicts the
  * rules detect and records which exports are kept or discarded as a result.
  */
-public final class ConflictPhase {
+public final class ConflictPhase implements ResolverPhase<Void> {
 
     private final UsesConflictStrategy strategy;
     private final ResolverGraph graph;
@@ -36,8 +36,10 @@ public final class ConflictPhase {
      * Runs the strategy on a {@link ResolverUsesSession} and explains the
      * substitutions of the outcome.
      */
-    public void run() {
+    @Override
+    public Void run() {
         strategy.enforceUses(new ResolverUsesSession(graph, classSpace));
         classSpace.explainSubstitutions();
+        return null;
     }
 }
