@@ -31,7 +31,7 @@ import org.osgi.resource.Wire;
 /**
  * Turns the selection recorded in the graph into the wires a resolver returns.
  */
-public final class WiringPhase {
+public final class WiringPhase implements ResolverPhase<Map<Resource, List<Wire>>> {
 
     private final ResolverGraph graph;
 
@@ -54,6 +54,7 @@ public final class WiringPhase {
      *
      * @return the wires of the resources that are part of the result
      */
+    @Override
     public Map<Resource, List<Wire>> run() {
         Set<ResolverResource> reachable = reachable();
         Map<Resource, List<Wire>> result = new LinkedHashMap<>();

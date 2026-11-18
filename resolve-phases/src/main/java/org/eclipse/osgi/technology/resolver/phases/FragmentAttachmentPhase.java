@@ -29,28 +29,23 @@ import org.osgi.service.resolver.HostedCapability;
 import org.osgi.service.resolver.ResolveContext;
 
 /**
- * What the specification asks for fragments, in the three places a resolve
- * needs it: before anything is selected which fragments are attached to a host
- * and where their capabilities are provided, and after the selection which
- * fragments a host ends up with. Every step runs single threaded as it relates
- * the candidates of several resources.
+ * What the specification asks for fragments before anything is selected: which
+ * fragments are attached to a host and where their capabilities are provided.
+ * It runs single threaded as it relates the candidates of several resources.
  */
-public final class FragmentAttachmentPhase {
+public final class FragmentAttachmentPhase implements ResolverPhase<Void> {
 
     private final ResolveContext context;
     private final ResolverGraph graph;
-    private final ExcludedFragments excluded;
+    private final FragmentExclusions excluded;
 
     /**
      * @param context the resolve context that decides where a hosted capability
      *       is placed
      * @param graph   the graph to change
+     * @param excluded the fragments that must not be attached to a host
      */
-    public FragmentAttachmentPhase(ResolveContext context, ResolverGraph graph) {
-        this(context, graph, new ExcludedFragments());
-    }
-
-    FragmentAttachmentPhase(ResolveContext context, ResolverGraph graph, ExcludedFragments excluded) {
+    public FragmentAttachmentPhase(ResolveContext context, ResolverGraph graph, FragmentExclusions excluded) {
         this.context = context;
         this.graph = graph;
         this.excluded = excluded;
@@ -59,13 +54,15 @@ public final class FragmentAttachmentPhase {
     /**
      * The steps that run before anything is selected: chooses the fragments
      * that are attached to a host and places their capabilities. The selected
-     * fragments are attached after the selection by
-     * {@link #attachSelectedFragments()}.
+     * fragments are attached after the selection by the
+     * resolver.
      */
-    public void run() {
+    @Override
+    public Void run() {
         excludeFragments();
         selectFragments();
         hostCapabilities();
+        return null;
     }
 
     /**
@@ -227,21 +224,5 @@ public final class FragmentAttachmentPhase {
                 offered.add(index, candidate.getCapability().unwrap());
             }
         }
-    }
-
-    /**
-     * After the selection: a fragment contributes its imports to the class
-     * space of the hosts it is attached to.
-     */
-    public void attachSelectedFragments() {
-        Map<ResolverResource, List<ResolverResource>> byHost = new IdentityHashMap<>();
-        for (ResolverResource fragment : graph.getResources()) {
-            if (fragment.isFragment() && fragment.getState() == ResolveState.RESOLVED) {
-                for (ResolverResource host : fragment.getHosts()) {
-                    byHost.computeIfAbsent(host, k -> new ArrayList<>()).add(fragment);
-                }
-            }
-        }
-        byHost.forEach(ResolverResource::setAttachedFragments);
     }
 }

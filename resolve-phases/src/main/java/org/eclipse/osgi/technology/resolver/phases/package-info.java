@@ -13,6 +13,6 @@
  * and rules, {@code ResolvabilityPhase} decides which resources can be resolved and what they select, {@code ConflictPhase}
  * lets a {@code UsesConflictStrategy} resolve the detected class space conflicts on a {@code ResolverUsesSession}, and
  * {@code FailurePhase} and {@code WiringPhase} produce the result.
- * A {@code ResolveOperation} calls them in that order, a resolver can reuse any of them or replace one.
+ * A {@code PhasedResolver} calls them in that order, a subclass can replace any of them.
  */
 package org.eclipse.osgi.technology.resolver.phases;

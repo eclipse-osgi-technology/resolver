@@ -20,7 +20,7 @@ import org.eclipse.osgi.technology.resolver.index.SubstitutionIndex;
  * Builds the {@link ClassSpace} of a graph: the indices, the rules and the
  * graph of the choices a conflict can depend on.
  */
-public final class ClassSpacePhase {
+public final class ClassSpacePhase implements ResolverPhase<ClassSpace> {
 
     private final ResolverGraph graph;
 
@@ -42,6 +42,7 @@ public final class ClassSpacePhase {
      *
      * @return the class space of the graph
      */
+    @Override
     public ClassSpace run() {
         ClassSpaceRules rules = new ClassSpaceRules(graph.getResources(), graph.getMandatory());
         keepNeededExports(rules.getSubstitutionIndex());

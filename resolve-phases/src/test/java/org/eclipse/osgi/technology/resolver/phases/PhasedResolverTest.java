@@ -17,6 +17,7 @@ import static org.eclipse.osgi.technology.resolver.phases.Bundles.fragment;
 import static org.eclipse.osgi.technology.resolver.phases.Bundles.importing;
 import static org.eclipse.osgi.technology.resolver.phases.Bundles.optional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +69,24 @@ class PhasedResolverTest {
 
         assertThat(wires.get(consumer)).singleElement().satisfies(wire -> assertThat(wire.getProvider()).isSameAs(v2));
         assertThat(wires).doesNotContainKey(v1);
+    }
+
+    @Test
+    void aSubclassCanReplaceAPhase() throws ResolutionException {
+        Resource consumer = consumer("consumer", "[1,3)");
+        PhasedResolver silent = new PhasedResolver() {
+            @Override
+            protected UsesConflictStrategy createStrategy(ResolveContext context) {
+                return strategy;
+            }
+
+            @Override
+            protected ResolverPhase<Map<Resource, List<Wire>>> createWiringPhase(ResolverGraph graph) {
+                return Collections::emptyMap;
+            }
+        };
+
+        assertThat(silent.resolve(TestContext.resolving(consumer).offering(api("1.0.0")))).isEmpty();
     }
 
     @Test

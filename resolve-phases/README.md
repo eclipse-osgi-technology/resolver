@@ -15,13 +15,17 @@ Only the resolution of the class space conflicts is not part of the module, it i
 : The resources of one operation in the order they were discovered, and which of them the resolve context asked for.
 It is what the phases hand over to each other, the state of every decision lives in the candidate graph of the resources (see the `candidates` module).
 
+`ResolverPhase`
+: A phase is a `ResolverPhase<R>` with a `run()` that returns what it produces, `Void` if it only changes the graph.
+The phase classes are final, a resolver replaces a phase with another implementation of the interface.
+
 `DiscoveryPhase`
 : Builds the graph from a `ResolveContext`: the requested resources and everything reachable from their effective requirements through the providers the context knows.
 It is the only phase that asks the context for providers, apart from the placement of hosted capabilities.
 
 `FragmentAttachmentPhase`
 : Selects the fragments that are attached to a host, only the highest version of a symbolic name, and places the capabilities a fragment provides on each of its hosts as the context decides.
-After the selection it attaches the selected fragments, so the imports of a fragment become part of the class space of the host.
+After the selection of the candidates `PhasedResolver` attaches the selected fragments, so the imports of a fragment become part of the class space of the host.
 
 `ClassSpacePhase`
 : Builds the `ClassSpace` of the graph: the `ClassSpaceRules` of the `classspace-rules` module and the `UsesGraph` over their indices.
@@ -38,13 +42,9 @@ The session is what the strategy sees of the operation, an implementation of the
 `FailurePhase` and `WiringPhase`
 : Derive the exception that tells why a mandatory resource failed, or the wires of the resolved resources that are needed by the requested ones.
 
-`ResolveOperation`
-: Calls the phases in that order.
-
 `PhasedResolver`
-: A `Resolver` that runs a `ResolveOperation` with a given `UsesConflictStrategy` and publishes the diagnostics of every outcome to a context that implements `DiagnosticsListener`.
-A resolver with a decision procedure is a subclass that creates the strategy for a context.
-Phases that are run in one step have a constructor with their input and a `run()`.
+: A `Resolver` that calls the phases in that order with a given `UsesConflictStrategy` and publishes the diagnostics of every outcome to a context that implements `DiagnosticsListener`.
+A resolver with a decision procedure is a subclass that creates the strategy for a context, it can replace a phase by overriding its `create...Phase` method that returns a `ResolverPhase`.
 
 ## How to use
 
@@ -59,12 +59,12 @@ public final class MyResolver extends PhasedResolver {
 ```
 
 A fragment is attached to every host it can be, a fragment is never required, so the resolver is free to leave it out.
-If a class space is inconsistent because a hosted capability or a requirement of a fragment is part of the violation, `ResolveOperation` excludes the fragment from that host and runs the phases again, with a new strategy.
+If a class space is inconsistent because a hosted capability or a requirement of a fragment is part of the violation, `PhasedResolver` excludes the fragment from that host and runs the phases again, with a new strategy.
 The strategies therefore do not decide about fragments, and every round excludes at least one attachment, so the rounds are bounded.
 A fragment that the resolve context asked for is never excluded, the resolve fails with a `FragmentConflictException` that names the fragment and its host.
 The explanation of the fragment tells which host it was not attached to and why.
 
-A resolver that needs other behavior calls the phases itself, `ResolveOperation` is the reference for the order.
+A resolver that needs other behavior overrides the phase it wants to change, or calls the phases itself, `PhasedResolver` is the reference for the order.
 Every phase works on the `ResolverGraph` and records what it decides in the candidate graph, so the explanation of a result, a failure or a diagnostic, is derived from there and can not deviate from what was decided.
 
 The diagnostics published by a `PhasedResolver` explain the resolve of every resource: why a requirement has no provider, why a candidate was not used, to which host a fragment is attached.
