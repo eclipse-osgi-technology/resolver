@@ -59,6 +59,27 @@ class ClassSpaceTest {
     }
 
     @Test
+    void aChangeOfAProvidersImportsIsSeenByTheRequirer() {
+        graph.bundle("origin").addExportPackage("p", new Attrs());
+        graph.bundle("other").addExportPackage("p", new Attrs());
+        graph.bundle("provider").addExportPackage("p", new Attrs());
+        graph.bundle("provider").addImportPackage("p", new Attrs());
+        graph.bundle("requirer").addRequireBundle("provider", new Attrs());
+        graph.select("requirer", "bundle", "provider", "provider");
+        Candidate chosen = graph.select("provider", "package", "p", "origin");
+        Candidate alternative = graph.offer("provider", "package", "p", "other");
+
+        assertThat(owners(graph.resource("requirer").getPackageSources("p")))
+                .containsExactly(graph.resource("origin"));
+
+        chosen.defer("another provider is preferred");
+        alternative.select("selected");
+        assertThat(owners(graph.resource("requirer").getPackageSources("p")))
+                .as("the view of the requirer follows the selection of the provider")
+                .containsExactly(graph.resource("other"));
+    }
+
+    @Test
     void aPackageImportedFromTwoProvidersIsAConflict() {
         graph.bundle("one").addExportPackage("p", version("1.0"));
         graph.bundle("two").addExportPackage("p", version("2.0"));

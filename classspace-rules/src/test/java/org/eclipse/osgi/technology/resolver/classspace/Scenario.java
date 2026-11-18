@@ -18,6 +18,7 @@ import java.util.Map;
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverCapability;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
+import org.eclipse.osgi.technology.resolver.candidates.PackageViewCache;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.index.CandidateSource;
 import org.eclipse.osgi.technology.resolver.index.SubstitutionIndex;
@@ -42,6 +43,7 @@ final class Scenario {
 
     private final Map<String, ResourceBuilder> builders = new LinkedHashMap<>();
     private final Map<String, ResolverResource> resources = new LinkedHashMap<>();
+    private final PackageViewCache packageViewCache = new PackageViewCache();
 
     /**
      * Starts the description of a bundle.
@@ -70,7 +72,7 @@ final class Scenario {
 
     private void build() {
         if (resources.isEmpty()) {
-            builders.forEach((n, builder) -> resources.put(n, new ResolverResource(builder.build())));
+            builders.forEach((n, builder) -> resources.put(n, new ResolverResource(builder.build(), packageViewCache)));
             List<ResolverCapability> all = new ArrayList<>();
             resources.values().forEach(r -> all.addAll(r.getResolverCapabilities()));
             for (ResolverResource resource : resources.values()) {

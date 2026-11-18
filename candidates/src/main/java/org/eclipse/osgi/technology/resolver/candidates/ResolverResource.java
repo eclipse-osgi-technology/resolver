@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.osgi.framework.Version;
-import org.osgi.framework.namespace.BundleNamespace;
 import org.osgi.framework.namespace.HostNamespace;
 import org.osgi.framework.namespace.IdentityNamespace;
 import org.osgi.framework.namespace.PackageNamespace;
@@ -50,6 +49,7 @@ public class ResolverResource implements Resource {
     private UsesViolation usesViolation;
     private List<ResolverResource> attached = Collections.emptyList();
     private Map<String, ResolverCapability> exportedPackages;
+    private final PackageViewCache packageViewCache;
     private final Set<ResolverResource> detachedHosts = Collections
             .newSetFromMap(new IdentityHashMap<>());
     private final Map<ResolverCapability, ResolverCapability> substituted = new LinkedHashMap<>();
@@ -58,9 +58,11 @@ public class ResolverResource implements Resource {
      * Wraps a resource of a resolve operation.
      *
      * @param wrapped the resource to wrap
+     * @param packageViewCache the scope of the cached package lookups, shared by the resources of one resolve
      */
-    public ResolverResource(Resource wrapped) {
+    public ResolverResource(Resource wrapped, PackageViewCache packageViewCache) {
         this.wrapped = wrapped;
+        this.packageViewCache = packageViewCache;
         this.fragment = !wrapped.getRequirements(HostNamespace.HOST_NAMESPACE).isEmpty();
         this.state = ResolveState.PENDING;
         for (Capability capability : wrapped.getCapabilities(null)) {
@@ -137,6 +139,7 @@ public class ResolverResource implements Resource {
      */
     public void detachFrom(ResolverResource host, String reason) {
         detachedHosts.add(host);
+        packageViewCache.invalidate();
         for (ResolverRequirement requirement : requirementsOf(HostNamespace.HOST_NAMESPACE)) {
             for (Candidate candidate : requirement.getCandidates()) {
                 if (candidate.getProvider() == host && candidate.getState() == CandidateState.SELECTED) {
@@ -199,6 +202,11 @@ public class ResolverResource implements Resource {
     public void setAttachedFragments(List<ResolverResource> fragments) {
         this.attached = new ArrayList<>(fragments);
         this.exportedPackages = null;
+        packageViewCache.invalidate();
+    }
+
+    PackageViewCache getPackageViewCache() {
+        return packageViewCache;
     }
 
     /**
@@ -350,6 +358,7 @@ public class ResolverResource implements Resource {
      */
     public void markResolved() {
         this.state = ResolveState.RESOLVED;
+        packageViewCache.invalidate();
     }
 
     /**
@@ -361,6 +370,7 @@ public class ResolverResource implements Resource {
     public void markFailed(ResolverRequirement requirement) {
         this.failedRequirement = requirement;
         this.state = ResolveState.FAILED;
+        packageViewCache.invalidate();
     }
 
     /**
@@ -377,6 +387,7 @@ public class ResolverResource implements Resource {
         });
         this.usesViolation = violation;
         this.state = ResolveState.FAILED;
+        packageViewCache.invalidate();
     }
 
     /**
@@ -397,7 +408,7 @@ public class ResolverResource implements Resource {
      * @return the capabilities
      */
     public List<ResolverCapability> getSeenCapabilities() {
-        List<ResolverCapability> seen = new ArrayList<>(getPackageView().values());
+        List<ResolverCapability> seen = new ArrayList<>(packageViewCache.getView(this).getCapabilities());
         for (List<ResolverCapability> required : getRequiredPackages().values()) {
             seen.addAll(required);
         }
@@ -448,7 +459,7 @@ public class ResolverResource implements Resource {
      * The packages this resource exports by name, including those of its attached fragments. They are
      * fixed until the attached fragments change.
      */
-    private Map<String, ResolverCapability> exportedPackages() {
+    Map<String, ResolverCapability> exportedPackages() {
         if (exportedPackages == null) {
             Map<String, ResolverCapability> exported = new HashMap<>();
             for (ResolverCapability capability : capabilitiesOf(PackageNamespace.PACKAGE_NAMESPACE)) {
@@ -467,74 +478,16 @@ public class ResolverResource implements Resource {
     }
 
     /**
-     * The capabilities of the package namespace this resource sees: what it imports (the selected candidates)
-     * and what it exports unless it imports the package as well (the export is then substituted).
-     * The result is a copy that can be changed by the caller.
-     */
-    private Map<String, ResolverCapability> getPackageView() {
-        Map<String, ResolverCapability> view = new HashMap<>(exportedPackages());
-        for (ResolverRequirement requirement : getClassSpaceRequirements()) {
-            if (PackageNamespace.PACKAGE_NAMESPACE.equals(requirement.getNamespace())) {
-                for (Candidate candidate : requirement.getCandidates()) {
-                    if (candidate.getState() == CandidateState.SELECTED) {
-                        ResolverCapability provided = candidate.getCapability();
-                        view.put(String.valueOf(provided.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)), provided);
-                    }
-                }
-            }
-        }
-        return view;
-    }
-
-    /**
      * The packages this resource sees through its selected required bundles and
      * what these reexport, by name. A package the provider imports as well
      * comes from where the provider gets it, not from its substituted export.
      * Imports of this resource are searched first, so a package it imports is
      * not seen through a required bundle, callers decide about that.
      *
-     * @return the capabilities by package name
+     * @return the capabilities by package name, must not be changed
      */
     public Map<String, List<ResolverCapability>> getRequiredPackages() {
-        Map<String, List<ResolverCapability>> result = new HashMap<>();
-        Map<ResolverResource, Boolean> visited = new IdentityHashMap<>();
-        visited.put(this, Boolean.TRUE);
-        for (ResolverRequirement requirement : getClassSpaceRequirements()) {
-            addRequired(requirement, result, visited);
-        }
-        return result;
-    }
-
-    private static void addRequired(ResolverRequirement requirement, Map<String, List<ResolverCapability>> result,
-            Map<ResolverResource, Boolean> visited) {
-        if (!BundleNamespace.BUNDLE_NAMESPACE.equals(requirement.getNamespace())) {
-            return;
-        }
-        for (Candidate candidate : requirement.getCandidates()) {
-            ResolverResource provider = candidate.getProvider();
-            if (candidate.getState() != CandidateState.SELECTED || visited.put(provider, Boolean.TRUE) != null) {
-                continue;
-            }
-            Map<String, ResolverCapability> view = provider.getPackageView();
-            List<ResolverCapability> exported = new ArrayList<>(provider.capabilitiesOf(PackageNamespace.PACKAGE_NAMESPACE));
-            for (ResolverResource fragment : provider.attached) {
-                exported.addAll(fragment.capabilitiesOf(PackageNamespace.PACKAGE_NAMESPACE));
-            }
-            for (ResolverCapability capability : exported) {
-                String name = String.valueOf(capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE));
-                List<ResolverCapability> sources = result.computeIfAbsent(name, k -> new ArrayList<>(1));
-                ResolverCapability source = view.get(name);
-                if (!sources.contains(source)) {
-                    sources.add(source);
-                }
-            }
-            for (ResolverRequirement next : provider.getClassSpaceRequirements()) {
-                if (BundleNamespace.VISIBILITY_REEXPORT
-                        .equals(next.getDirectives().get(BundleNamespace.REQUIREMENT_VISIBILITY_DIRECTIVE))) {
-                    addRequired(next, result, visited);
-                }
-            }
-        }
+        return packageViewCache.getView(this).getRequired();
     }
 
     /**
@@ -546,45 +499,7 @@ public class ResolverResource implements Resource {
      * @return the capabilities, empty if the package is not seen
      */
     public List<ResolverCapability> getPackageSources(String name) {
-        ResolverCapability own = getPackageView().get(name);
-        List<ResolverCapability> result = new ArrayList<>();
-        List<ResolverCapability> provided;
-        if (own != null && own.getOwner() != this) {
-            provided = Collections.singletonList(own);
-        } else {
-            if (own != null) {
-                result.add(own);
-            }
-            List<ResolverCapability> required = getRequiredPackages().get(name);
-            provided = required == null ? Collections.<ResolverCapability> emptyList() : required;
-        }
-        // a provided package is split with what its provider gets from its own
-        // required bundles
-        for (ResolverCapability capability : provided) {
-            if (!result.contains(capability)) {
-                result.add(capability);
-            }
-            ResolverResource provider = capability.getOwner();
-            if (provider == this) {
-                continue;
-            }
-            ResolverCapability providerExport = provider.getPackageView().get(name);
-            if (providerExport == null || providerExport.getOwner() != provider) {
-                continue;
-            }
-            if (!result.contains(providerExport)) {
-                result.add(providerExport);
-            }
-            List<ResolverCapability> split = provider.getRequiredPackages().get(name);
-            if (split != null) {
-                for (ResolverCapability other : split) {
-                    if (!result.contains(other)) {
-                        result.add(other);
-                    }
-                }
-            }
-        }
-        return result;
+        return packageViewCache.getView(this).getSources(name);
     }
 
     @Override
@@ -599,7 +514,7 @@ public class ResolverResource implements Resource {
                 : new ArrayList<Requirement>(requirementsOf(namespace));
     }
 
-    private List<ResolverCapability> capabilitiesOf(String namespace) {
+    List<ResolverCapability> capabilitiesOf(String namespace) {
         return capabilitiesByNamespace.getOrDefault(namespace, Collections.emptyList());
     }
 

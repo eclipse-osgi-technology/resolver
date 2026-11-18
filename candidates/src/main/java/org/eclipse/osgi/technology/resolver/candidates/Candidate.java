@@ -105,6 +105,7 @@ public class Candidate {
     public void select(String reason) {
         this.reason = reason;
         this.state = CandidateState.SELECTED;
+        requirement.getOwner().getPackageViewCache().invalidate();
     }
 
     /**
@@ -115,6 +116,7 @@ public class Candidate {
     public void reject(String reason) {
         this.reason = reason;
         this.state = CandidateState.REJECTED;
+        requirement.getOwner().getPackageViewCache().invalidate();
     }
 
     /**
@@ -126,6 +128,7 @@ public class Candidate {
     public void defer(String reason) {
         this.reason = reason;
         this.state = CandidateState.DEFERRED;
+        requirement.getOwner().getPackageViewCache().invalidate();
     }
 
     /**
@@ -157,6 +160,7 @@ public class Candidate {
      */
     public void restore(CandidateState state, String reason) {
         this.state = state;
+        requirement.getOwner().getPackageViewCache().invalidate();
         this.reason = reason;
     }
 

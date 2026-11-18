@@ -117,7 +117,7 @@ public final class DiscoveryPhase implements ResolverPhase<Void> {
     private ResolverResource resourceOf(Resource resource, Deque<ResolverResource> queue) {
         ResolverResource wrapper = graph.get(resource);
         if (wrapper == null) {
-            wrapper = new ResolverResource(resource);
+            wrapper = new ResolverResource(resource, graph.getPackageViewCache());
             graph.add(wrapper);
             queue.add(wrapper);
         }
