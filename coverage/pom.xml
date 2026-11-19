@@ -67,6 +67,11 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.osgi-technology.resolver</groupId>
+      <artifactId>resolver-sat4j</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.osgi-technology.resolver</groupId>
       <artifactId>verifier</artifactId>
       <version>${project.version}</version>
     </dependency>
