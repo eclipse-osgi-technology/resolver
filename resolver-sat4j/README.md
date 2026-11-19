@@ -8,7 +8,8 @@ The phases around the strategy are shared with other resolvers, so the solver ca
 `Sat4jResolver` is a `PhasedResolver` from `resolve-phases` that uses a `Sat4jStrategy` as its `UsesConflictStrategy` from `conflicts`.
 Everything else in the module is package private:
 
-- `Sat4jStrategy` runs the rounds of the class space check, calls the solver once, applies the solution and checks the result with the rule again.
+- `Sat4jStrategy` runs the rounds of the class space check, calls the solver, applies the solution and checks the result with the rule again.
+- `Encoding` chooses how much of the rule is handed to the solver.
 - `PseudoBooleanProblem` collects variables, clauses, at most one constraints and the objective and hands them to Sat4j.
   It knows nothing about resources.
 - `UsesSolver` encodes the class space rule of a `UsesSession` into a `PseudoBooleanProblem`, `SeenUse` is a helper of the encoding.
@@ -18,7 +19,7 @@ Everything else in the module is package private:
 
 1. The phases select the candidates by priority and check the class space of every resolved resource with the rules.
    If nothing is inconsistent the solver is never asked, which is the common case.
-2. Otherwise the open choices are encoded once as a pseudo boolean problem: which resources are resolved, which candidate each requirement is wired to, which fragments are attached to which host and which exports are substituted.
+2. Otherwise the open choices are encoded as a pseudo boolean problem: which resources are resolved, which candidate each requirement is wired to, which fragments are attached to which host and which exports are substituted.
 3. The problem is solved with an objective that is lexicographic by scaling:
    every optional resource is resolved, nothing is given up or detached, every optional requirement is wired, and the candidate the context ranked first is preferred.
 4. The solution is applied to the graph.
@@ -28,7 +29,7 @@ Everything else in the module is package private:
 The solver decides all coupled choices at once and optimally, which makes the policies an objective one can read.
 The reason of a changed choice is the conflict it takes part in, found through the `uses` graph, it is not derived from a chain of reasoning.
 
-## The encoding
+## Encoding the class space rule
 
 The problem is built from the graph as the phases left it:
 only resources that passed the local and cross resource checks take part, only the selected candidate and the alternatives of a requirement are offered, exports pinned by substitution are decided, and only package names that reach a contested package get variables.
@@ -67,6 +68,20 @@ Three things to keep when changing the encoding:
   Keeping the implied view as a separate lower bound breaks the cycle.
 - The exemption for a split package has to depend on the wires chosen, not on the candidates that exist, otherwise it is too lenient as soon as a Require-Bundle requirement has alternatives.
 
+## Full and sliced encoding
+
+The class space rule can be handed to the solver in two ways, the `Encoding` is an argument of `Sat4jResolver` and `Sat4jStrategy` and has to be chosen, there is no default.
+
+- `SLICED` encodes only the packages of the conflicts found and the packages whose class space reaches them (`UsesIndex#reachingFrom`).
+  The solution is tried on the graph inside a `Checkpoint`, checked with the rule and rolled back.
+  If it is not consistent, the packages of its conflicts are added and the problem is solved again from the state before.
+  A solution of fewer constraints that is consistent is a solution of all of them, so the result is the same as with the full encoding.
+  This is a counterexample guided refinement: the encoding starts abstract and is refined by what the check finds wrong.
+  It ends when the check is clean, or when a conflict is on a package that was encoded already, which is one more solve of every package.
+- `FULL` encodes every package that can take part in a conflict and solves once.
+
+The tests run the shared scenarios once for each encoding, the system property `org.eclipse.osgi.technology.resolver.sat4j.encoding` of the test engine chooses it, see the executions of the surefire plugin in the `pom.xml`.
+
 ## How to extend
 
 The encoding is the part to change.
@@ -82,3 +97,6 @@ The solver time is limited by the constructor argument of `Sat4jStrategy` (60 se
   It finds the optimum by solving again with a tighter bound on the objective until no better model exists, which is where most of the time goes.
 - Encoding the installation of packages as a pseudo boolean optimisation problem with a lexicographic objective is the approach of Tucker et al., "OPIUM: Optimal Package Install/Uninstall Manager", ICSE 2007, and of Eclipse p2: Le Berre and Rapicault, "Dependency Management for the Eclipse Ecosystem: Eclipse p2, Metadata and Resolution", IWOCE 2009.
   What is specific here is that the solver only decides the choices that are still open after the phases, the class space rule itself is the one of `classspace-rules`.
+- The sliced encoding is an instance of counterexample guided abstraction refinement: Clarke, Grumberg, Jha, Lu and Veith, "Counterexample-Guided Abstraction Refinement", CAV 2000 (LNCS 1855).
+  A model of the abstraction is checked against the full rule (here the class space check on the graph), and what the check finds wrong refines the abstraction.
+  Adding the constraints a model violates only when it does is also known as lazy constraint generation.

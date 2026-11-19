@@ -12,6 +12,7 @@ package org.eclipse.osgi.technology.resolver.sat4j;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
@@ -93,12 +94,20 @@ final class UsesSolver extends PseudoBooleanProblem {
     private final Terms directTerms = new Terms();
     private final Deque<Object[]> work = new ArrayDeque<>();
     private final OwnerCache ownerCache = new OwnerCache(this);
+    private final Set<String> relevant;
 
-    UsesSolver(UsesSession session, long timeoutSeconds) {
+    /**
+     * @param session the session whose resolved resources are solved for
+     * @param timeoutSeconds the time the solver may take, the best solution found so far is used after it
+     * @param violated the packages the problem is about: only these and the packages whose class space reaches them
+     *                 are encoded, {@code null} for every package that can take part in a conflict at all
+     */
+    UsesSolver(UsesSession session, long timeoutSeconds, Set<String> violated) {
         this.index = session.getUsesIndex();
         this.graph = session.getUsesGraph();
         this.substitutions = session.getSubstitutionIndex();
         this.timeoutSeconds = timeoutSeconds;
+        this.relevant = violated == null ? null : index.reachingFrom(violated);
         mandatoryRoots.addAll(session.getMandatory());
         optionalRoots.addAll(session.getOptional());
         for (ResolverResource resource : session.getResources()) {
@@ -209,19 +218,19 @@ final class UsesSolver extends PseudoBooleanProblem {
         for (ResolverCapability capability : resource.getResolverCapabilities()) {
             String name = packageName(capability);
             if (name != null) {
-                if (index.reachesContested(name)) {
+                if (relevant(name)) {
                     int exportSeen = directVariable(resource, name, capability);
                     clause(not(activeLiteral(capability)), exportSeen);
                     directTerms.add(exportSeen, activeLiteral(capability));
                 }
-            } else if (index.reachesContested(capability.getUses())) {
+            } else if (relevant(capability.getUses())) {
                 // a capability of another namespace with uses shapes the class space of its owner as well
                 clause(-self, seesVariable(resource, capability));
             }
         }
         for (ResolverCapability capability : resource.getExportedPackages().values()) {
             String name = packageName(capability);
-            if (capability.getDeclaringResource() != resource && index.reachesContested(name)) {
+            if (capability.getDeclaringResource() != resource && relevant(name)) {
                 // the packages of a fragment are provided by its host as long as it is attached
                 int exportSeen = directVariable(resource, name, capability);
                 int attachment = attachmentLiteral(capability);
@@ -279,7 +288,7 @@ final class UsesSolver extends PseudoBooleanProblem {
             for (int i = 0; i < literals.length; i++) {
                 ResolverCapability capability = candidates.get(i).getCapability();
                 String name = packageName(capability);
-                if (name == null || !index.reachesContested(name)) {
+                if (name == null || !relevant(name)) {
                     continue;
                 }
                 int seen = directVariable(owner, name, capability);
@@ -302,7 +311,7 @@ final class UsesSolver extends PseudoBooleanProblem {
         } else if (!host && !BundleNamespace.BUNDLE_NAMESPACE.equals(namespace)) {
             for (int i = 0; i < literals.length; i++) {
                 ResolverCapability capability = candidates.get(i).getCapability();
-                if (index.reachesContested(capability.getUses())) {
+                if (relevant(capability.getUses())) {
                     clause(-literals[i], seesVariable(owner, capability));
                     if (hosts != null) {
                         for (Map.Entry<ResolverResource, Integer> entry : hosts.entrySet()) {
@@ -495,7 +504,7 @@ final class UsesSolver extends PseudoBooleanProblem {
         }
         int literal = sees.get(viewer).get(capability);
         for (String used : capability.getUses()) {
-            if (!index.reachesContested(used)) {
+            if (!relevant(used)) {
                 continue;
             }
             watchers.computeIfAbsent(exporter, k -> new LinkedHashMap<String, List<SeenUse>>())
@@ -675,6 +684,19 @@ final class UsesSolver extends PseudoBooleanProblem {
                         return true;
                     }
                 }
+            }
+        }
+        return false;
+    }
+
+    private boolean relevant(String name) {
+        return relevant == null ? index.reachesContested(name) : relevant.contains(name);
+    }
+
+    private boolean relevant(Collection<String> names) {
+        for (String name : names) {
+            if (relevant(name)) {
+                return true;
             }
         }
         return false;
