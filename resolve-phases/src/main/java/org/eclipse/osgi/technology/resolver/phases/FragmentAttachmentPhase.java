@@ -220,9 +220,28 @@ public final class FragmentAttachmentPhase implements ResolverPhase<Void> {
             }
             if (!hosted) {
                 requirement.insertCandidate(index, candidate.getCapability(), "Offered by the resolve context")
-                        .reject("Not provided as fragment " + fragment.getName() + " is not attached to any host");
+                        .reject("Not provided as fragment " + fragment.getName() + " is not attached to any host"
+                                + exclusionReasons(fragment));
                 offered.add(index, candidate.getCapability().unwrap());
             }
         }
+    }
+
+    /**
+     * Why the fragment was excluded from the hosts it could be attached to, as
+     * a suffix of a message.
+     */
+    private String exclusionReasons(ResolverResource fragment) {
+        StringBuilder reasons = new StringBuilder();
+        for (ResolverRequirement hostRequirement : fragment.getResolverRequirements()) {
+            if (!HostNamespace.HOST_NAMESPACE.equals(hostRequirement.getNamespace())) {
+                continue;
+            }
+            for (Candidate hostCandidate : hostRequirement.getCandidates()) {
+                excluded.reasonFor(fragment.unwrap(), hostCandidate.getProvider().unwrap())
+                        .ifPresent(reason -> reasons.append(reasons.length() == 0 ? ": " : "; ").append(reason));
+            }
+        }
+        return reasons.toString();
     }
 }

@@ -32,8 +32,10 @@ import org.osgi.resource.Capability;
  * the owner of the capability does. This holds transitively, the used package
  * of a used package is covered as well. A package that has only one capability
  * in the whole resolve can not be inconsistent, the {@link UsesIndex} tells
- * which packages are contested so everything else is not looked at. The check
- * only reads the graph, it does not change it.
+ * which packages are contested so everything else is not looked at. A
+ * fragment has no class space of its own, it is part of the class space of
+ * every host it is attached to and is checked there. The check only reads the
+ * graph, it does not change it.
  */
 public final class UsesRule {
 
@@ -57,6 +59,11 @@ public final class UsesRule {
      * is consistent
      */
     public Optional<UsesViolation> check(ResolverResource resource) {
+        // a fragment has no class loader, its exports and imports are part of
+        // the class space of its hosts
+        if (resource.isFragment()) {
+            return Optional.empty();
+        }
         List<ResolverCapability> twice = resource.getConflictingImports();
         if (!twice.isEmpty()) {
             return Optional.of(new UsesViolation(

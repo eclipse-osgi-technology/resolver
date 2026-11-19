@@ -172,6 +172,22 @@ class ClassSpaceTest {
     }
 
     @Test
+    void thePackagesOfAFragmentAreProvidedByTheHost() {
+        graph.bundle("host");
+        graph.fragment("fragment", "host").addExportPackage("extra", new Attrs());
+        ResolverResource host = graph.resource("host");
+        ResolverResource fragment = graph.resource("fragment");
+        host.setAttachedFragments(Collections.singletonList(fragment));
+
+        ResolverCapability source = host.getPackageSources("extra").get(0);
+
+        assertThat(source.getOwner()).as("the fragment has no class loader").isSameAs(host);
+        assertThat(source.getDeclaringResource()).isSameAs(fragment);
+        assertThat(fragment.getPackageSources("extra")).as("the fragment exports it on its own")
+                .extracting(ResolverCapability::getOwner).containsExactly(fragment);
+    }
+
+    @Test
     void theUsesDirectiveIsReadAsAListOfPackages() {
         graph.bundle("exporter").addExportPackage("p", Attrs.create("uses:", " q, r ,,s"));
         graph.bundle("plain").addExportPackage("q", new Attrs());

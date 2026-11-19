@@ -267,3 +267,18 @@ Feature: Fragment bundles
     When I resolve bundle "importer" and bundle "fragment"
     Then the resolution succeeds
     And bundle "importer" is wired to bundle "host" for package "foo"
+
+  Scenario: A package exported by a fragment is provided by its host
+    Given there is bundle "legacy"
+    And it exports package "p" in version "1.0.0"
+    And it exports package "spi" in version "1.0.0"
+    And there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it exports package "p" in version "2.0.0" using "spi"
+    And it exports package "spi" in version "2.0.0" using "p"
+    And there is bundle "consumer"
+    And it imports package "p" in version range "[2.0,3.0)"
+    When I resolve bundle "consumer" and bundle "fragment"
+    Then the resolution succeeds
+    And bundle "fragment" is resolved
+    And bundle "consumer" is wired to bundle "host" for package "p"

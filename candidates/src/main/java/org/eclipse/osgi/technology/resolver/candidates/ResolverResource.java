@@ -250,8 +250,8 @@ public class ResolverResource implements Resource {
      * @param declaring the fragment that declares the capability
      * @return the wrapped capability
      */
-    public ResolverCapability hostedCapability(HostedCapability hosted, ResolverResource declaring) {
-        return new ResolverCapability(this, hosted, declaring);
+    public HostedResolverCapability hostedCapability(HostedCapability hosted, ResolverResource declaring) {
+        return new HostedResolverCapability(this, hosted, declaring);
     }
 
     /**
@@ -465,11 +465,12 @@ public class ResolverResource implements Resource {
             for (ResolverCapability capability : capabilitiesOf(PackageNamespace.PACKAGE_NAMESPACE)) {
                 exported.put(String.valueOf(capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)), capability);
             }
-            // the packages a fragment exports are exported by the host
+            // a fragment has no class loader, the packages it exports are exported by the host
             for (ResolverResource fragment : attached) {
                 for (ResolverCapability capability : fragment.capabilitiesOf(PackageNamespace.PACKAGE_NAMESPACE)) {
-                    exported.putIfAbsent(String.valueOf(capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)),
-                            capability);
+                    exported.computeIfAbsent(
+                            String.valueOf(capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE)),
+                            name -> new HostedResolverCapability(this, capability.unwrap(), fragment));
                 }
             }
             exportedPackages = exported;

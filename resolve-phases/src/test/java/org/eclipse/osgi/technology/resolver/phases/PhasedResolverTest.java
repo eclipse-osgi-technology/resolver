@@ -286,6 +286,25 @@ class PhasedResolverTest {
     }
 
     @Test
+    void theExportOfAFragmentThatWasLeftOutTellsWhyItIsNotProvided() {
+        Resource host = hostImporting("[2,3)");
+        ResourceBuilder fragmentBuilder = fragment("frag", "1.0.0", "host");
+        fragmentBuilder.addImportPackage("api", importing("[1,2)"));
+        fragmentBuilder.addExportPackage("foo", export("1.0.0"));
+        ResourceBuilder importerBuilder = bundle("importer");
+        importerBuilder.addImportPackage("foo", importing("[1,2)"));
+        Resource importer = importerBuilder.build();
+        TestContext context = TestContext.resolving(host, importer).offering(api("1.0.0"), api("2.0.0"))
+                .optionally(fragmentBuilder.build());
+
+        assertThatThrownBy(() -> resolver.resolve(context)).isInstanceOf(ResolutionException.class);
+
+        assertThat(context.published).singleElement().satisfies(diagnostics -> assertThat(
+                diagnostics.getMessage(importer)).hasValueSatisfying(message -> assertThat(message)
+                        .contains("is not attached to any host: Not attached to the inconsistent host")));
+    }
+
+    @Test
     void aFragmentThatWasAskedForIsNeverLeftOut() {
         Resource host = hostImporting("[2,3)");
         Resource fragment = fragmentImporting("frag", "[1,2)");

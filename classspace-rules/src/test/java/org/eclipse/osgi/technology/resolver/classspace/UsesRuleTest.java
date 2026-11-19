@@ -147,6 +147,42 @@ class UsesRuleTest {
         assertThat(violation.get().getPackageName()).isEqualTo("q");
     }
 
+    /**
+     * The fragment exports p and spi that use each other, legacy exports both
+     * as well, consumer imports p.
+     */
+    private void fragmentWhoseExportsUseEachOther() {
+        scenario.bundle("legacy").addExportPackage("p", new Attrs());
+        scenario.bundle("legacy").addExportPackage("spi", new Attrs());
+        scenario.bundle("host");
+        scenario.fragment("fragment", "host").addExportPackage("p", uses("spi"));
+        scenario.fragment("fragment", "host").addExportPackage("spi", uses("p"));
+        scenario.bundle("consumer").addImportPackage("p", new Attrs());
+        scenario.attach("host", "fragment");
+        scenario.selectHosted("consumer", "p", "host", "fragment");
+    }
+
+    @Test
+    void theExportsOfAFragmentThatUseEachOtherAreOneClassSpaceWithTheHost() {
+        fragmentWhoseExportsUseEachOther();
+
+        assertThat(scenario.usesRule().check(scenario.resource("consumer"))).isEmpty();
+    }
+
+    @Test
+    void aFragmentIsNotCheckedOnItsOwnAsItIsPartOfTheClassSpaceOfItsHost() {
+        scenario.bundle("ant").addExportPackage("a", uses("p"));
+        scenario.bundle("ant").addImportPackage("p", new Attrs());
+        scenario.bundle("host");
+        scenario.fragment("fragment", "host").addExportPackage("p", new Attrs());
+        scenario.fragment("fragment", "host").addImportPackage("a", new Attrs());
+        scenario.attach("host", "fragment");
+        scenario.selectHosted("ant", "p", "host", "fragment");
+        scenario.select("fragment", "a", "ant");
+
+        assertThat(scenario.usesRule().check(scenario.resource("fragment"))).isEmpty();
+    }
+
     @Test
     void aPackageImportedFromTwoProvidersIsReported() {
         scenario.bundle("one").addExportPackage("p", Attrs.create("version", "1.0"));
