@@ -9,6 +9,8 @@
  *******************************************************************************/
 package org.eclipse.osgi.technology.resolver.candidates;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +24,41 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class PackageViewCache {
 
     private final Map<ResolverResource, PackageView> views = new ConcurrentHashMap<>();
+    private final List<Runnable> undo = new ArrayList<>();
+    private int checkpoints;
+
+    /**
+     * Marks the current state of the graph of this scope, to get back to it with {@link Checkpoint#rollback()}.
+     * Every change made to candidates and resources while a checkpoint is open is remembered, so rolling back
+     * costs what was changed, not the size of the graph.
+     *
+     * @return the checkpoint, to be closed
+     */
+    public Checkpoint checkpoint() {
+        checkpoints++;
+        return new Checkpoint(this, undo.size());
+    }
+
+    boolean isRecording() {
+        return checkpoints > 0;
+    }
+
+    void record(Runnable reverse) {
+        undo.add(reverse);
+    }
+
+    void rollback(int mark) {
+        for (int i = undo.size() - 1; i >= mark; i--) {
+            undo.remove(i).run();
+        }
+        invalidate();
+    }
+
+    void release() {
+        if (--checkpoints == 0) {
+            undo.clear();
+        }
+    }
 
     /**
      * The view of a resource on the current selection of candidates, it is computed on first use.

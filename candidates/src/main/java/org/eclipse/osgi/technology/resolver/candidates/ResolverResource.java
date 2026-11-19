@@ -138,7 +138,9 @@ public class ResolverResource implements Resource {
      * @param reason why the fragment is detached
      */
     public void detachFrom(ResolverResource host, String reason) {
-        detachedHosts.add(host);
+        if (detachedHosts.add(host) && packageViewCache.isRecording()) {
+            packageViewCache.record(() -> detachedHosts.remove(host));
+        }
         packageViewCache.invalidate();
         for (ResolverRequirement requirement : requirementsOf(HostNamespace.HOST_NAMESPACE)) {
             for (Candidate candidate : requirement.getCandidates()) {
@@ -169,6 +171,17 @@ public class ResolverResource implements Resource {
      *     (the export is discarded) or {@code null} if the export is kept
      */
     public void decide(ResolverCapability export, ResolverCapability substitute) {
+        if (packageViewCache.isRecording()) {
+            boolean known = substituted.containsKey(export);
+            ResolverCapability before = substituted.get(export);
+            packageViewCache.record(() -> {
+                if (known) {
+                    substituted.put(export, before);
+                } else {
+                    substituted.remove(export);
+                }
+            });
+        }
         substituted.put(export, substitute);
     }
 
@@ -200,9 +213,29 @@ public class ResolverResource implements Resource {
      * @param fragments the fragments to attach
      */
     public void setAttachedFragments(List<ResolverResource> fragments) {
+        if (packageViewCache.isRecording()) {
+            List<ResolverResource> before = this.attached;
+            packageViewCache.record(() -> {
+                this.attached = before;
+                this.exportedPackages = null;
+            });
+        }
         this.attached = new ArrayList<>(fragments);
         this.exportedPackages = null;
         packageViewCache.invalidate();
+    }
+
+    private void recordResolveState() {
+        if (packageViewCache.isRecording()) {
+            ResolveState oldState = this.state;
+            ResolverRequirement oldRequirement = this.failedRequirement;
+            UsesViolation oldViolation = this.usesViolation;
+            packageViewCache.record(() -> {
+                this.state = oldState;
+                this.failedRequirement = oldRequirement;
+                this.usesViolation = oldViolation;
+            });
+        }
     }
 
     PackageViewCache getPackageViewCache() {
@@ -357,6 +390,7 @@ public class ResolverResource implements Resource {
      * Marks the resource as resolvable.
      */
     public void markResolved() {
+        recordResolveState();
         this.state = ResolveState.RESOLVED;
         packageViewCache.invalidate();
     }
@@ -368,6 +402,7 @@ public class ResolverResource implements Resource {
      * @param requirement the requirement that has no usable candidate
      */
     public void markFailed(ResolverRequirement requirement) {
+        recordResolveState();
         this.failedRequirement = requirement;
         this.state = ResolveState.FAILED;
         packageViewCache.invalidate();
