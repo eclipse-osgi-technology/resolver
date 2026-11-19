@@ -479,6 +479,16 @@ public class ResolverResource implements Resource {
     }
 
     /**
+     * The packages this resource exports by name, including those of its attached fragments, which are provided by
+     * this resource as {@link HostedResolverCapability}.
+     *
+     * @return the capabilities by package name, must not be changed
+     */
+    public Map<String, ResolverCapability> getExportedPackages() {
+        return Collections.unmodifiableMap(exportedPackages());
+    }
+
+    /**
      * The packages this resource sees through its selected required bundles and
      * what these reexport, by name. A package the provider imports as well
      * comes from where the provider gets it, not from its substituted export.

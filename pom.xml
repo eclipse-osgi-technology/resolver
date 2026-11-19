@@ -40,6 +40,7 @@
     <module>index</module>
     <module>resolve-phases</module>
     <module>resolver-permutation</module>
+    <module>resolver-sat4j</module>
     <module>verifier</module>
     <module>test-suite</module>
     <module>felix-resolver</module>
@@ -89,6 +90,7 @@
     <assertj.version>3.27.7</assertj.version>
     <cucumber.version>7.34.3</cucumber.version>
     <felix.resolver.version>2.0.4</felix.resolver.version>
+    <sat4j.version>2.3.6</sat4j.version>
   </properties>
 
   <dependencyManagement>
@@ -131,6 +133,16 @@
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
         <version>${assertj.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.sat4j</groupId>
+        <artifactId>org.ow2.sat4j.pb</artifactId>
+        <version>${sat4j.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.sat4j</groupId>
+        <artifactId>org.ow2.sat4j.core</artifactId>
+        <version>${sat4j.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
