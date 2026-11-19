@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.eclipse.osgi.technology.resolver.verifier.ClassSpace;
 import org.eclipse.osgi.technology.resolver.verifier.ConsistencyVerifier;
@@ -97,6 +98,19 @@ public class ResolveSteps {
     @When("I resolve {bundle} and optionally {bundle}")
     public void iResolveOptionally(BundleRef mandatory, BundleRef optional) {
         resolve(List.of(mandatory), List.of(optional));
+    }
+
+    /**
+     * Resolves one bundle that has to be resolved and several that are resolved
+     * if possible.
+     *
+     * @param mandatory the bundle that has to be resolved
+     * @param optionals the comma separated symbolic names of the bundles that
+     *                  are resolved if possible
+     */
+    @When("I resolve {bundle} and optionally the bundles {string}")
+    public void iResolveOptionallyAll(BundleRef mandatory, String optionals) {
+        resolve(List.of(mandatory), Stream.of(optionals.split("\\s*,\\s*")).map(BundleRef::of).toList());
     }
 
     /** Resolves with every described bundle as a bundle that has to be resolved. */
