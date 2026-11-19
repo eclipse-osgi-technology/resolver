@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
 import org.eclipse.osgi.technology.resolver.candidates.CandidateState;
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
@@ -84,6 +85,11 @@ public final class ResolverUsesSession implements UsesSession {
     @Override
     public Optional<UsesViolation> violationOf(ResolverResource resource) {
         return classSpace.violationOf(resource);
+    }
+
+    @Override
+    public Checkpoint checkpoint() {
+        return graph.getPackageViewCache().checkpoint();
     }
 
     @Override

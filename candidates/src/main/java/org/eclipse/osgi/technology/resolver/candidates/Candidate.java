@@ -103,9 +103,7 @@ public class Candidate {
      * @param reason why the candidate is chosen
      */
     public void select(String reason) {
-        this.reason = reason;
-        this.state = CandidateState.SELECTED;
-        requirement.getOwner().getPackageViewCache().invalidate();
+        change(CandidateState.SELECTED, reason);
     }
 
     /**
@@ -114,9 +112,7 @@ public class Candidate {
      * @param reason why the candidate is excluded
      */
     public void reject(String reason) {
-        this.reason = reason;
-        this.state = CandidateState.REJECTED;
-        requirement.getOwner().getPackageViewCache().invalidate();
+        change(CandidateState.REJECTED, reason);
     }
 
     /**
@@ -126,9 +122,7 @@ public class Candidate {
      * @param reason why another candidate is preferred
      */
     public void defer(String reason) {
-        this.reason = reason;
-        this.state = CandidateState.DEFERRED;
-        requirement.getOwner().getPackageViewCache().invalidate();
+        change(CandidateState.DEFERRED, reason);
     }
 
     /**
@@ -159,9 +153,22 @@ public class Candidate {
      * @param reason the reason to restore
      */
     public void restore(CandidateState state, String reason) {
-        this.state = state;
-        requirement.getOwner().getPackageViewCache().invalidate();
-        this.reason = reason;
+        change(state, reason);
+    }
+
+    private void change(CandidateState newState, String newReason) {
+        PackageViewCache cache = requirement.getOwner().getPackageViewCache();
+        if (cache.isRecording()) {
+            CandidateState oldState = this.state;
+            String oldReason = this.reason;
+            cache.record(() -> {
+                this.state = oldState;
+                this.reason = oldReason;
+            });
+        }
+        this.state = newState;
+        this.reason = newReason;
+        cache.invalidate();
     }
 
     @Override

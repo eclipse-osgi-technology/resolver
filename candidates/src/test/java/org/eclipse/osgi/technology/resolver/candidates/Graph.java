@@ -61,6 +61,11 @@ final class Graph {
         return builder;
     }
 
+    /** Marks the current state of the graph, see {@link PackageViewCache#checkpoint()}. */
+    Checkpoint checkpoint() {
+        return packageViewCache.checkpoint();
+    }
+
     ResolverResource resource(String name) {
         if (resources.isEmpty()) {
             builders.forEach((n, builder) -> resources.put(n, new ResolverResource(builder.build(), packageViewCache)));

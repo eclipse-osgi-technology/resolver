@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
@@ -81,6 +82,15 @@ public interface UsesSession {
      * @return the violation, empty if the class space is consistent
      */
     Optional<UsesViolation> violationOf(ResolverResource resource);
+
+    /**
+     * Marks the current state of the graph, a strategy can change the graph to
+     * see what the rule says about it and take the changes back with
+     * {@link Checkpoint#rollback()}.
+     *
+     * @return the checkpoint, to be closed
+     */
+    Checkpoint checkpoint();
 
     /**
      * Fails the resource with the violation and records it at the candidates

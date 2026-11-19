@@ -18,6 +18,7 @@ import java.util.Set;
 
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
 import org.eclipse.osgi.technology.resolver.candidates.CandidateState;
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
@@ -28,20 +29,20 @@ import org.osgi.resource.Requirement;
 /**
  * The selection a search starts from, and what a {@link Permutation} makes of it.
  * A permutation is only a delta, it is shown to the graph (so the class space rule can be asked about it) by
- * {@link #apply(Permutation, boolean)} and taken back by {@link #restore()}.
+ * {@link #apply(Permutation, boolean)} and taken back by {@link #restore()},
+ * which rolls the graph back to the state the search started from.
  */
-final class GraphState {
+final class GraphState implements AutoCloseable {
 
     private static final String TRIED = "Used in a permutation of the selection";
 
     private final UsesSession session;
     private final Map<ResolverRequirement, List<Candidate>> usable = new IdentityHashMap<>();
-    private final Map<Candidate, CandidateState> states = new IdentityHashMap<>();
-    private final Map<Candidate, String> reasons = new IdentityHashMap<>();
-    private final Set<Candidate> touched = Collections.newSetFromMap(new IdentityHashMap<Candidate, Boolean>());
+    private final Checkpoint checkpoint;
 
     GraphState(UsesSession session) {
         this.session = session;
+        this.checkpoint = session.checkpoint();
         for (ResolverResource resource : session.getResources()) {
             if (resource.getState() != ResolveState.RESOLVED) {
                 continue;
@@ -54,8 +55,6 @@ final class GraphState {
                     boolean alternative = !requirement.isMultiple() && !list.isEmpty() && candidate.isAlternative();
                     if (selected || alternative) {
                         list.add(candidate);
-                        states.put(candidate, candidate.getState());
-                        reasons.put(candidate, candidate.getReason());
                     }
                 }
                 if (!list.isEmpty()) {
@@ -69,10 +68,15 @@ final class GraphState {
      * Takes back everything that was applied.
      */
     void restore() {
-        for (Candidate candidate : touched) {
-            candidate.restore(states.get(candidate), reasons.get(candidate));
-        }
-        touched.clear();
+        checkpoint.rollback();
+    }
+
+    /**
+     * Ends the search, what was applied last stays.
+     */
+    @Override
+    public void close() {
+        checkpoint.close();
     }
 
     /**
@@ -168,19 +172,13 @@ final class GraphState {
         Candidate next = current(requirement, permutation);
         Fault cause = null;
         for (Candidate removed : permutation.removed(requirement)) {
-            touch(removed);
             cause = permutation.causeOf(removed);
             removed.defer(explain ? replaced(removed, next, cause) : TRIED);
         }
         if (next != null && next.getState() != CandidateState.SELECTED) {
-            touch(next);
             next.select(explain ? "Selected instead of " + permutation.removed(requirement).iterator().next()
                     .getProvider().getName() + ", that one would make the " + what(cause) + " inconsistent" : TRIED);
         }
-    }
-
-    private void touch(Candidate candidate) {
-        touched.add(candidate);
     }
 
     private static String replaced(Candidate removed, Candidate next, Fault cause) {

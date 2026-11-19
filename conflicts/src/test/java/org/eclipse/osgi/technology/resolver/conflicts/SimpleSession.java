@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
@@ -46,6 +47,11 @@ final class SimpleSession implements UsesSession {
         this.substitutionIndex = new SubstitutionIndex(resources, candidates, r -> true, resources);
         this.usesRule = new UsesRule(usesIndex);
         this.substitutionRule = new SubstitutionRule(substitutionIndex);
+    }
+
+    @Override
+    public Checkpoint checkpoint() {
+        throw new UnsupportedOperationException("The strategies of the tests do not try solutions");
     }
 
     @Override

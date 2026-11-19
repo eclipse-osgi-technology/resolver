@@ -48,7 +48,12 @@ public final class PermutationSearch implements UsesConflictStrategy {
      * @return true if resources were failed and the search has to be repeated
      */
     private static boolean search(UsesSession session) {
-        GraphState state = new GraphState(session);
+        try (GraphState state = new GraphState(session)) {
+            return search(session, state);
+        }
+    }
+
+    private static boolean search(UsesSession session, GraphState state) {
         PermutationQueue queue = new PermutationQueue(state);
         queue.add(PermutationType.USES, new Permutation());
         Map<ResolverResource, Fault> best = null;
