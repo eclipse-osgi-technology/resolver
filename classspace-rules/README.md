@@ -15,6 +15,7 @@ A resolver, a search strategy or a verification tool can ask the rules whether a
 The rule computes the packages a resource sees and follows the `uses` directives from there, transitively.
 A package that has a single provider in the whole resolve can not be inconsistent, the `UsesIndex` of the `index` module tells which packages are contested, and everything that does not lead to one is not looked at.
 A package that is split over several required bundles is seen partly by a consumer of one of them, that is consistent as long as one side contains the other.
+A fragment has no class loader of its own (Core specification, "Fragment Bundles"): the packages it exports are provided by its host and its imports are imports of the host, so the rule checks the host and never a fragment on its own.
 
 `SubstitutionRule`
 : A bundle that exports and imports the same package keeps its export only if the import is wired to that export, otherwise the export is discarded (Core specification, "Importing and Exporting the Same Package").

@@ -59,6 +59,28 @@ final class Scenario {
     }
 
     /**
+     * Starts the description of a fragment of a host, it is not attached
+     * before {@link #attach(String, String)}.
+     */
+    ResourceBuilder fragment(String name, String host) {
+        if (builders.containsKey(name)) {
+            return builders.get(name);
+        }
+        ResourceBuilder builder = new ResourceBuilder();
+        builder.addCapability(new CapReqBuilder("osgi.identity").addAttribute("osgi.identity", name));
+        builder.addFragmentHost(host, new Attrs());
+        builders.put(name, builder);
+        return builder;
+    }
+
+    /**
+     * Attaches a fragment to its host.
+     */
+    void attach(String host, String fragment) {
+        resource(host).setAttachedFragments(Collections.singletonList(resource(fragment)));
+    }
+
+    /**
      * Attributes of an exported package that uses other packages.
      */
     static Attrs uses(String... packages) {
@@ -95,6 +117,31 @@ final class Scenario {
         ResolverRequirement requirement = importOf(importer, packageName);
         for (Candidate candidate : requirement.getCandidates()) {
             if (candidate.getProvider() == resource(provider)) {
+                candidate.select("selected by the test");
+            } else {
+                candidate.defer("not selected by the test");
+            }
+        }
+    }
+
+    /**
+     * Selects the export of a package of an attached fragment as the host
+     * provides it, the way the importer gets it from the resolver.
+     */
+    void selectHosted(String importer, String packageName, String host, String fragment) {
+        ResolverRequirement requirement = importOf(importer, packageName);
+        ResolverCapability declared = null;
+        for (ResolverCapability capability : resource(fragment).getResolverCapabilities()) {
+            if (packageName.equals(capability.getAttributes().get(PackageNamespace.PACKAGE_NAMESPACE))) {
+                declared = capability;
+            }
+        }
+        ResolverResource hostResource = resource(host);
+        Candidate hosted = requirement.insertCandidate(0,
+                hostResource.hostedCapability(new HostedExport(hostResource, declared.unwrap()), resource(fragment)),
+                "provided by the host");
+        for (Candidate candidate : requirement.getCandidates()) {
+            if (candidate == hosted) {
                 candidate.select("selected by the test");
             } else {
                 candidate.defer("not selected by the test");
