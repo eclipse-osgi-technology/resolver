@@ -12,6 +12,7 @@ package org.eclipse.osgi.technology.resolver.sat4j;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.eclipse.osgi.technology.resolver.failures.ExportSubstitutedException;
@@ -32,6 +33,8 @@ import org.osgi.service.resolver.ResolveContext;
  */
 public class Sat4jEngine implements ResolverEngine {
 
+    static final String ENCODING_PROPERTY = "org.eclipse.osgi.technology.resolver.sat4j.encoding";
+
     @Override
     public String name() {
         return "sat4j";
@@ -39,7 +42,7 @@ public class Sat4jEngine implements ResolverEngine {
 
     @Override
     public Map<Resource, List<Wire>> resolve(ResolveContext context) throws ResolutionException {
-        return new Sat4jResolver().resolve(context);
+        return new Sat4jResolver(encoding()).resolve(context);
     }
 
     @Override
@@ -78,5 +81,12 @@ public class Sat4jEngine implements ResolverEngine {
             assertThat(e.getExport()).isNotNull();
             assertThat(e.getSubstitute()).isNotNull();
         });
+    }
+
+    /**
+     * The encoding the scenarios run with, chosen by the build with the system property {@value #ENCODING_PROPERTY}.
+     */
+    private static Encoding encoding() {
+        return Encoding.valueOf(System.getProperty(ENCODING_PROPERTY, Encoding.SLICED.name()).trim().toUpperCase(Locale.ROOT));
     }
 }

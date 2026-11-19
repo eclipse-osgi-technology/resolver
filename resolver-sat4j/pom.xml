@@ -127,6 +127,21 @@
             <include>**/RunCucumberTest.java</include>
           </includes>
         </configuration>
+        <executions>
+          <!-- the shared scenarios once for every encoding, the default one is run by default-test -->
+          <execution>
+            <id>full-encoding</id>
+            <goals>
+              <goal>test</goal>
+            </goals>
+            <configuration>
+              <reportNameSuffix>full-encoding</reportNameSuffix>
+              <systemPropertyVariables>
+                <org.eclipse.osgi.technology.resolver.sat4j.encoding>full</org.eclipse.osgi.technology.resolver.sat4j.encoding>
+              </systemPropertyVariables>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

@@ -325,6 +325,29 @@ public final class UsesIndex {
     }
 
     /**
+     * The package names whose class space reaches one of the given names
+     * through the uses of what can provide them.
+     *
+     * @param names the names to start from
+     * @return the names and every name that uses them, directly or not
+     */
+    public Set<String> reachingFrom(Collection<String> names) {
+        Set<String> result = new HashSet<>(names);
+        Deque<String> todo = new ArrayDeque<>(names);
+        while (!todo.isEmpty()) {
+            Set<String> users = usedBy.get(todo.pop());
+            if (users != null) {
+                for (String user : users) {
+                    if (result.add(user)) {
+                        todo.push(user);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Tells if a package can be part of an inconsistent class space.
      *
      * @param packageName the name of the package

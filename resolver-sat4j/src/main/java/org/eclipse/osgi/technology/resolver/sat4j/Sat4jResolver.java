@@ -19,8 +19,17 @@ import org.osgi.service.resolver.ResolveContext;
  */
 public class Sat4jResolver extends PhasedResolver {
 
+    private final Encoding encoding;
+
+    /**
+     * @param encoding how much of the class space rule is handed to the solver
+     */
+    public Sat4jResolver(Encoding encoding) {
+        this.encoding = encoding;
+    }
+
     @Override
     protected UsesConflictStrategy createStrategy(ResolveContext context) {
-        return new Sat4jStrategy();
+        return new Sat4jStrategy(encoding);
     }
 }

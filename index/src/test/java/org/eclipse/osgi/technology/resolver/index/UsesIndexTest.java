@@ -62,6 +62,22 @@ class UsesIndexTest {
     }
 
     @Test
+    void theNamesReachingAPackageAreTheOnesThatUseItDirectlyOrNot() {
+        universe.bundle("inner").addExportPackage("q", Attrs.create("uses:", "r"));
+        universe.bundle("middle").addExportPackage("p", Attrs.create("uses:", "q"));
+        universe.bundle("outer").addExportPackage("o", Attrs.create("uses:", "p"));
+        universe.bundle("leaf").addExportPackage("r", new Attrs());
+        universe.bundle("unrelated").addExportPackage("s", Attrs.create("uses:", "t"));
+        universe.bundle("other").addExportPackage("t", new Attrs());
+
+        UsesIndex index = index();
+
+        assertThat(index.reachingFrom(Arrays.asList("q"))).containsExactlyInAnyOrder("q", "p", "o");
+        assertThat(index.reachingFrom(Arrays.asList("r"))).containsExactlyInAnyOrder("r", "q", "p", "o");
+        assertThat(index.reachingFrom(Arrays.asList("unknown"))).containsExactly("unknown");
+    }
+
+    @Test
     void importersAreTheResourcesThatCanBeWiredToAProvider() {
         universe.bundle("provider").addExportPackage("p", new Attrs());
         universe.bundle("importer").addImportPackage("p", new Attrs());
