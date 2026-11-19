@@ -282,3 +282,48 @@ Feature: Fragment bundles
     Then the resolution succeeds
     And bundle "fragment" is resolved
     And bundle "consumer" is wired to bundle "host" for package "p"
+
+  Scenario: A fragment attaches that imports a package it exports itself
+    Given there is bundle "legacy"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it exports package "p" in version "2.0.0"
+    And it imports package "p" in version range "[2.0,3.0)"
+    When I resolve bundle "host" and optionally bundle "fragment"
+    Then the resolution succeeds
+    And bundle "fragment" is resolved
+    And bundle "fragment" is wired to bundle "host"
+
+  Scenario: A fragment that imports a package it exports itself provides it to others
+    Given there is bundle "legacy"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "host"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it exports package "p" in version "2.0.0"
+    And it imports package "p" in version range "[2.0,3.0)"
+    And there is bundle "consumer"
+    And it imports package "p"
+    When I resolve bundle "consumer" and optionally the bundles "host, fragment, legacy"
+    Then the resolution succeeds
+    And bundle "fragment" is resolved
+    And bundle "consumer" is wired to bundle "host" for package "p"
+
+  Scenario: Fragment exports that use each other and are imported by the fragment stay attached next to an unrelated uses choice
+    Given there is bundle "api"
+    And it exports package "common" in version "1.0.0"
+    And there is bundle "impl"
+    And it exports package "common" in version "1.0.0" using "internal"
+    And it exports package "internal" in version "1.0.0" using "common"
+    And there is bundle "core"
+    And there is a fragment bundle "compat" of bundle "core"
+    And it exports package "log" in version "2.0.0" using "log.helpers"
+    And it exports package "log.helpers" in version "2.0.0" using "log"
+    And it imports package "log.helpers" in version range "[2.0,3.0)"
+    And there is bundle "user"
+    And it optionally imports package "common"
+    And it optionally imports package "internal"
+    When I resolve all bundles as optional resources
+    Then the resolution succeeds
+    And bundle "compat" is resolved
+    And bundle "user" is resolved

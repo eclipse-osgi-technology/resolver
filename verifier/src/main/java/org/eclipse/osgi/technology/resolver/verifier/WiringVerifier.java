@@ -214,13 +214,23 @@ public final class WiringVerifier {
         }
     }
 
-    /** An imported package that is also exported may stay unwired, the resource then uses its own export. */
+    /**
+     * An imported package that is also exported may stay unwired, the resource then uses its own export, which for a
+     * host includes the exports of its attached fragments.
+     */
     private boolean satisfiedByOwnExport(Resource resource, Requirement requirement) {
         if (PackageNamespace.PACKAGE_NAMESPACE.equals(requirement.getNamespace())) {
-            for (Capability capability : resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                if (filterMatches(requirement, capability)
-                        && mandatoryAttributesAreRequested(requirement, capability)) {
-                    return true;
+            List<Resource> declaring = new ArrayList<>();
+            declaring.add(resource);
+            if (!isFragment(resource)) {
+                declaring.addAll(fragmentsOf(resource));
+            }
+            for (Resource declarer : declaring) {
+                for (Capability capability : declarer.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
+                    if (filterMatches(requirement, capability)
+                            && mandatoryAttributesAreRequested(requirement, capability)) {
+                        return true;
+                    }
                 }
             }
         }
