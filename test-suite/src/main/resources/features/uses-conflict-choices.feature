@@ -330,3 +330,27 @@ Feature: Resolving uses conflicts
     Scenario: The inconsistent bundle fails with the conflict if it is the one that is needed
       When I resolve bundle "mixed"
       Then the resolution fails because of a uses constraint violation on package "codecs" for bundle "legacy"
+
+  Rule: A conflict is resolved by the choices it depends on, the others stay as ranked
+
+    Scenario: A provider of a package the conflict does not involve is not replaced on the way to the solution
+      Every set of choices that is consistent is a valid outcome, but a choice that does not contribute to the solution has no reason to differ from the ranking.
+      Only the provider of "report" is in conflict, so "util" stays with the exporter that is ranked first.
+      Given there is bundle "base-1"
+      And it exports package "util" in version "1.0.0"
+      And it exports package "report" in version "1.0.0"
+      And there is bundle "base-2"
+      And it exports package "util" in version "1.0.0"
+      And there is bundle "framework"
+      And it exports package "report" in version "1.0.0"
+      And it imports package "util" in version range "[1.0,2.0)"
+      And it exports package "build" in version "1.0.0" using "util,report"
+      And there is bundle "app"
+      And it imports package "build"
+      And it imports package "util" in version range "[1.0,2.0)"
+      And it imports package "report" in version range "[1.0,2.0)"
+      When I resolve bundle "app"
+      Then the resolution succeeds
+      And bundle "app" is wired to bundle "framework" for package "report"
+      And bundle "app" is wired to bundle "base-1" for package "util"
+      And bundle "framework" is wired to bundle "base-1" for package "util"
