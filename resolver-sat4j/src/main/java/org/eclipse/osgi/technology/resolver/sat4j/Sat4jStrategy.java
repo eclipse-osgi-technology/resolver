@@ -12,11 +12,9 @@ package org.eclipse.osgi.technology.resolver.sat4j;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
@@ -70,7 +68,7 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
         boolean solved = false;
         boolean checkAll = false;
         while (true) {
-            Map<ResolverResource, UsesViolation> violations = violationsOf(session, dirty);
+            Map<ResolverResource, UsesViolation> violations = session.violationsOf(dirty);
             if (violations.isEmpty()) {
                 return;
             }
@@ -133,7 +131,7 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
                 if (apply(session, solution, violations, new ArrayList<>())) {
                     session.propagateFailures();
                 }
-                remaining = violationsOf(session, session.getResources());
+                remaining = session.violationsOf(session.getResources());
                 trial.rollback();
             }
             if (remaining.isEmpty()) {
@@ -142,26 +140,6 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
             // a conflict on packages the problem covered already is one the encoding lets through: ask about all
             all = !names.addAll(namesOf(remaining));
         }
-    }
-
-    /**
-     * The class space rule applied to the resolved resources of a collection, in parallel.
-     *
-     * @return the violation of each resource that is not consistent, in the order of the collection
-     */
-    private static Map<ResolverResource, UsesViolation> violationsOf(UsesSession session,
-            Collection<ResolverResource> resources) {
-        List<ResolverResource> resolved = resources.stream().filter(r -> r.getState() == ResolveState.RESOLVED)
-                .collect(Collectors.toList());
-        List<UsesViolation> found = resolved.parallelStream().map(r -> session.violationOf(r).orElse(null))
-                .collect(Collectors.toList());
-        Map<ResolverResource, UsesViolation> violations = new LinkedHashMap<>();
-        for (int i = 0; i < resolved.size(); i++) {
-            if (found.get(i) != null) {
-                violations.put(resolved.get(i), found.get(i));
-            }
-        }
-        return violations;
     }
 
     /**
