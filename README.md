@@ -37,6 +37,7 @@ The repository is in its initial setup phase and grows module by module.
 | [index](index)                               | Resolver independent lookup structures over the resources and capabilities of a resolve     |
 | [resolve-phases](resolve-phases)             | The phases of a resolve operation, detected class space conflicts are left to a strategy    |
 | [resolver-permutation](resolver-permutation) | A resolver that decides class space conflicts by permutation like the Felix resolver        |
+| [resolver-repair](resolver-repair)           | A resolver that decides class space conflicts with a conflict directed repair search        |
 | [resolver-sat4j](resolver-sat4j)             | A resolver that decides class space conflicts with a pseudo boolean solver (Sat4j)          |
 | [verifier](verifier)                         | Resolver independent checks that a resolve result is well formed and class space consistent |
 | [test-suite](test-suite)                     | Cucumber scenarios that exercise a resolver through the OSGi Resolver Service API           |

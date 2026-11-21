@@ -40,6 +40,7 @@
     <module>index</module>
     <module>resolve-phases</module>
     <module>resolver-permutation</module>
+    <module>resolver-repair</module>
     <module>resolver-sat4j</module>
     <module>verifier</module>
     <module>test-suite</module>
