@@ -53,7 +53,7 @@ class PseudoBooleanProblem {
      */
     final Map<Integer, Long> preference = new LinkedHashMap<>();
     /**
-     * Variables that are true if a resource is given up or a fragment detached.
+     * Variables that are true if a resource is given up.
      */
     final List<Integer> givenUp = new ArrayList<>();
     /**
@@ -123,7 +123,7 @@ class PseudoBooleanProblem {
 
     /**
      * The objective, lexicographic by scaling: optional resources that are not resolved outweigh everything, then
-     * resources given up and fragments detached, then unwired optional requirements and candidates ranked lower.
+     * resources given up, then unwired optional requirements and candidates ranked lower.
      */
     private ObjectiveFunction objective() {
         IVecInt literals = new VecInt();

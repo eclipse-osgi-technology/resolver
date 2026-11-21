@@ -17,21 +17,19 @@ import java.util.Map;
 import java.util.Set;
 
 import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
-import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
 import org.eclipse.osgi.technology.resolver.conflicts.UsesConflictStrategy;
 import org.eclipse.osgi.technology.resolver.conflicts.UsesSession;
-import org.osgi.framework.namespace.HostNamespace;
 
 /**
  * A {@link UsesConflictStrategy} that decides the choices a class space conflict depends on with a pseudo boolean
  * solver (Sat4j).
  * If the selection by priority left class spaces inconsistent, the open choices (resolved resources, selected
- * candidates and the alternatives behind them, fragment attachments, substitutable exports) are encoded with the
+ * candidates and the alternatives behind them, substitutable exports) are encoded with the
  * class space rule ({@link UsesSolver}) and solved with the objective: every optional resource resolved, nothing
- * given up or detached, every optional requirement wired, the candidate ranked first by the context.
+ * given up, every optional requirement wired, the candidate ranked first by the context.
  * How much is encoded is chosen by the {@link Encoding}.
  * The solution is applied to the graph with reasons and checked with the rule again, anything the encoding let
  * through fails as it would without a solver.
@@ -143,8 +141,8 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
     }
 
     /**
-     * Applies what the solver decided: changed selections, fragments it detached and resources it gave up, which fail
-     * with their violation (or with the host requirement for a fragment no host is left for).
+     * Applies what the solver decided: changed selections and resources it gave up, which fail with their
+     * violation.
      *
      * @return true if a resource failed
      */
@@ -159,17 +157,6 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
             if (violation != null) {
                 session.fail(given, violation);
                 failed = true;
-            }
-        }
-        for (ResolverResource fragment : session.getResources()) {
-            if (fragment.isFragment() && fragment.getState() == ResolveState.RESOLVED
-                    && fragment.getHosts().isEmpty()) {
-                for (ResolverRequirement requirement : fragment.getResolverRequirements()) {
-                    if (HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
-                        fragment.markFailed(requirement);
-                        failed = true;
-                    }
-                }
             }
         }
         return failed;
