@@ -19,9 +19,10 @@ Everything else in the module is package private:
 
 1. The phases select the candidates by priority and check the class space of every resolved resource with the rules.
    If nothing is inconsistent the solver is never asked, which is the common case.
-2. Otherwise the open choices are encoded as a pseudo boolean problem: which resources are resolved, which candidate each requirement is wired to, which fragments are attached to which host and which exports are substituted.
+2. Otherwise the open choices are encoded as a pseudo boolean problem: which resources are resolved, which candidate each requirement is wired to and which exports are substituted.
+   The fragments are attached to the hosts the phases selected them for, the solver does not decide that, see `resolve-phases`.
 3. The problem is solved with an objective that is lexicographic by scaling:
-   every optional resource is resolved, nothing is given up or detached, every optional requirement is wired, and the candidate the context ranked first is preferred.
+   every optional resource is resolved, nothing is given up, every optional requirement is wired, and the candidate the context ranked first is preferred.
 4. The solution is applied to the graph.
    A changed choice records why it was changed, naming the conflict the choice takes part in, and a resource the solver had to give up fails with its violation.
 5. The result is checked with the rule again, anything the encoding let through fails as it would without a solver.
@@ -38,9 +39,8 @@ The variables are:
 
 `R(r)`, `W(c)`
 : Resource `r` is resolved, candidate `c` is wired.
-For the host candidate of a fragment `W` is the attachment to that host.
 A mandatory requirement of a resolved resource with single cardinality is wired to exactly one of its candidates, an optional one to at most one.
-A wire needs its provider resolved, a wire to a capability of a fragment needs the fragment attached to the providing host.
+A wire needs its provider resolved, a wire to a capability of a fragment is possible for the hosts the fragment is attached to.
 
 `A(e)`
 : An export that its own bundle imports as well is kept.
@@ -50,7 +50,7 @@ It is if the resource is resolved and the overlapping import is not wired elsewh
 : Resource `r` sees package `p` directly from export `e`, by an import, its own export or a required bundle.
 `r` sees the exports of bundle `b` through Require-Bundle, including reexports, and `r` imports `p`, so what required bundles provide for `p` is shadowed.
 These are the sources of the class space rule.
-They are defined in both directions: a clause for every way the variable becomes true (a wire, for a fragment also its attachment) and a clause that it is true only if one of these ways holds.
+They are defined in both directions: a clause for every way the variable becomes true (a wire, for a fragment also the hosts it is attached to) and a clause that it is true only if one of these ways holds.
 
 `S(r,c)`
 : Resource `r` sees capability `c`, directly or implied: whoever sees a capability sees the direct sources of its exporter for every package the capability uses, and the capabilities these sources use in turn.
