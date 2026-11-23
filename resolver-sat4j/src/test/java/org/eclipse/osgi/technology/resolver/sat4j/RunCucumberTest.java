@@ -24,6 +24,6 @@ import org.junit.platform.suite.api.Suite;
 @IncludeEngines("cucumber")
 @SelectPackages("features")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "org.eclipse.osgi.technology.resolver")
-@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty,html:target/cucumber-reports/cucumber.html")
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty")
 public class RunCucumberTest {
 }
