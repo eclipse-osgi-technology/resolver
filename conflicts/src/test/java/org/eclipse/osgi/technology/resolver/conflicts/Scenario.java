@@ -137,7 +137,7 @@ final class Scenario {
     SimpleSession session() {
         List<ResolverResource> all = resources();
         all.forEach(ResolverResource::markResolved);
-        return new SimpleSession(all, candidates());
+        return new SimpleSession(all, candidates(), packageViewCache);
     }
 
     List<ResolverResource> resources() {

@@ -12,6 +12,7 @@ package org.eclipse.osgi.technology.resolver.sat4j;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
@@ -47,8 +48,9 @@ import org.osgi.framework.namespace.PackageNamespace;
  * are pinned by substitution are already decided, and only package names that can reach a contested package get
  * variables (the same pruning the class space rule relies on). The encoded rule is the class space rule:
  * <ul>
- * <li>{@code R(r)}: the resource is resolved, {@code W(c)}: the candidate is wired (for a fragment's host candidate
- * this is the attachment to that host), {@code A(e)}: an export that its own bundle imports as well is kept.</li>
+ * <li>{@code R(r)}: the resource is resolved, {@code W(c)}: the candidate is wired, {@code A(e)}: an export that its own
+ * bundle imports as well is kept. A fragment is attached to the hosts it was selected for, which the phases decide, so
+ * it is not a choice of the problem.</li>
  * <li>{@code D(r,p,e)}: r sees package p directly from export e, by an import, its own export or a required bundle
  * (its package sources), {@code X(r,b)}: r sees the exports of bundle b through Require-Bundle, {@code I(r,p)}: r
  * imports p, so what required bundles provide for p is shadowed. These are defined exactly by the wires, as the
@@ -59,8 +61,8 @@ import org.osgi.framework.namespace.PackageNamespace;
  * For every capability a resource sees, its direct sources of a used package and the exporter's direct sources must
  * be compatible: one set of exporters contains the other, or the package is split over bundles the resource
  * requires. Two direct sources of one package are only legal as such a split as well.
- * The objective prefers, in this order: every optional resource resolved, no resource given up and no fragment
- * detached, every optional requirement wired, and the candidate the context ranked first.
+ * The objective prefers, in this order: every optional resource resolved, no resource given up, every optional
+ * requirement wired, and the candidate the context ranked first.
  * A changed choice names the conflict it is related to through the uses graph, not a chain of reasoning.
  */
 final class UsesSolver extends PseudoBooleanProblem {
@@ -77,7 +79,7 @@ final class UsesSolver extends PseudoBooleanProblem {
     final Map<Candidate, Integer> wires = new IdentityHashMap<>();
     final Map<ResolverRequirement, List<Candidate>> usable = new IdentityHashMap<>();
     final Map<ResolverCapability, Integer> active = new IdentityHashMap<>();
-    private final Map<ResolverResource, Map<ResolverResource, Integer>> attachments = new IdentityHashMap<>();
+    private final Map<ResolverResource, Set<ResolverResource>> attachments = new IdentityHashMap<>();
     private final Map<ResolverResource, Set<String>> exported = new IdentityHashMap<>();
     private final Map<ResolverResource, Map<String, Map<ResolverCapability, Integer>>> direct = new IdentityHashMap<>();
     private final Map<ResolverResource, Map<ResolverCapability, Integer>> sees = new IdentityHashMap<>();
@@ -93,12 +95,20 @@ final class UsesSolver extends PseudoBooleanProblem {
     private final Terms directTerms = new Terms();
     private final Deque<Object[]> work = new ArrayDeque<>();
     private final OwnerCache ownerCache = new OwnerCache(this);
+    private final Set<String> relevant;
 
-    UsesSolver(UsesSession session, long timeoutSeconds) {
+    /**
+     * @param session the session whose resolved resources are solved for
+     * @param timeoutSeconds the time the solver may take, the best solution found so far is used after it
+     * @param violated the packages the problem is about: only these and the packages whose class space reaches them
+     *                 are encoded, {@code null} for every package that can take part in a conflict at all
+     */
+    UsesSolver(UsesSession session, long timeoutSeconds, Set<String> violated) {
         this.index = session.getUsesIndex();
         this.graph = session.getUsesGraph();
         this.substitutions = session.getSubstitutionIndex();
         this.timeoutSeconds = timeoutSeconds;
+        this.relevant = violated == null ? null : index.reachingFrom(violated);
         mandatoryRoots.addAll(session.getMandatory());
         optionalRoots.addAll(session.getOptional());
         for (ResolverResource resource : session.getResources()) {
@@ -176,15 +186,15 @@ final class UsesSolver extends PseudoBooleanProblem {
     }
 
     /**
-     * The attachment of a fragment to a host is the wire of its host requirement to that host.
+     * A fragment is attached to the hosts its host requirement is selected for.
      */
     private void collectAttachments(ResolverResource fragment) {
-        Map<ResolverResource, Integer> byHost = new IdentityHashMap<>();
+        Set<ResolverResource> byHost = Collections.newSetFromMap(new IdentityHashMap<>());
         for (ResolverRequirement requirement : fragment.getResolverRequirements()) {
             if (HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
                 for (Candidate candidate : usable.getOrDefault(requirement, Collections.<Candidate> emptyList())) {
                     if (candidate.getState() == CandidateState.SELECTED) {
-                        byHost.put(candidate.getProvider(), wires.get(candidate));
+                        byHost.add(candidate.getProvider());
                     }
                 }
             }
@@ -209,19 +219,19 @@ final class UsesSolver extends PseudoBooleanProblem {
         for (ResolverCapability capability : resource.getResolverCapabilities()) {
             String name = packageName(capability);
             if (name != null) {
-                if (index.reachesContested(name)) {
+                if (relevant(name)) {
                     int exportSeen = directVariable(resource, name, capability);
                     clause(not(activeLiteral(capability)), exportSeen);
                     directTerms.add(exportSeen, activeLiteral(capability));
                 }
-            } else if (index.reachesContested(capability.getUses())) {
+            } else if (relevant(capability.getUses())) {
                 // a capability of another namespace with uses shapes the class space of its owner as well
                 clause(-self, seesVariable(resource, capability));
             }
         }
         for (ResolverCapability capability : resource.getExportedPackages().values()) {
             String name = packageName(capability);
-            if (capability.getDeclaringResource() != resource && index.reachesContested(name)) {
+            if (capability.getDeclaringResource() != resource && relevant(name)) {
                 // the packages of a fragment are provided by its host as long as it is attached
                 int exportSeen = directVariable(resource, name, capability);
                 int attachment = attachmentLiteral(capability);
@@ -254,7 +264,10 @@ final class UsesSolver extends PseudoBooleanProblem {
             }
         }
         if (host) {
-            encodeAttachments(owner, self, literals);
+            // the attachment is decided before, a host that cannot take the fragment is a conflict
+            for (int literal : literals) {
+                clause(literal);
+            }
         } else if (requirement.isMultiple()) {
             for (int i = 0; i < literals.length; i++) {
                 Candidate candidate = candidates.get(i);
@@ -274,12 +287,12 @@ final class UsesSolver extends PseudoBooleanProblem {
             }
         }
         String namespace = requirement.getNamespace();
-        Map<ResolverResource, Integer> hosts = owner.isFragment() ? attachments.get(owner) : null;
+        Set<ResolverResource> hosts = owner.isFragment() ? attachments.get(owner) : null;
         if (PackageNamespace.PACKAGE_NAMESPACE.equals(namespace)) {
             for (int i = 0; i < literals.length; i++) {
                 ResolverCapability capability = candidates.get(i).getCapability();
                 String name = packageName(capability);
-                if (name == null || !index.reachesContested(name)) {
+                if (name == null || !relevant(name)) {
                     continue;
                 }
                 int seen = directVariable(owner, name, capability);
@@ -289,24 +302,24 @@ final class UsesSolver extends PseudoBooleanProblem {
                 clause(-literals[i], importedByOwner);
                 importTerms.add(importedByOwner, literals[i]);
                 if (hosts != null) {
-                    for (Map.Entry<ResolverResource, Integer> entry : hosts.entrySet()) {
-                        int seenByHost = directVariable(entry.getKey(), name, capability);
-                        clause(-literals[i], -entry.getValue(), seenByHost);
-                        directTerms.add(seenByHost, literals[i], entry.getValue());
-                        int importedByHost = importedVariable(entry.getKey(), name);
-                        clause(-literals[i], -entry.getValue(), importedByHost);
-                        importTerms.add(importedByHost, literals[i], entry.getValue());
+                    for (ResolverResource attached : hosts) {
+                        int seenByHost = directVariable(attached, name, capability);
+                        clause(-literals[i], seenByHost);
+                        directTerms.add(seenByHost, literals[i]);
+                        int importedByHost = importedVariable(attached, name);
+                        clause(-literals[i], importedByHost);
+                        importTerms.add(importedByHost, literals[i]);
                     }
                 }
             }
         } else if (!host && !BundleNamespace.BUNDLE_NAMESPACE.equals(namespace)) {
             for (int i = 0; i < literals.length; i++) {
                 ResolverCapability capability = candidates.get(i).getCapability();
-                if (index.reachesContested(capability.getUses())) {
+                if (relevant(capability.getUses())) {
                     clause(-literals[i], seesVariable(owner, capability));
                     if (hosts != null) {
-                        for (Map.Entry<ResolverResource, Integer> entry : hosts.entrySet()) {
-                            clause(-literals[i], -entry.getValue(), seesVariable(entry.getKey(), capability));
+                        for (ResolverResource attached : hosts) {
+                            clause(-literals[i], seesVariable(attached, capability));
                         }
                     }
                 }
@@ -318,32 +331,13 @@ final class UsesSolver extends PseudoBooleanProblem {
                 clause(-literals[i], bundle);
                 bundleTerms.add(bundle, literals[i]);
                 if (hosts != null) {
-                    for (Map.Entry<ResolverResource, Integer> entry : hosts.entrySet()) {
-                        int hosted = bundleVariable(entry.getKey(), provider);
-                        clause(-literals[i], -entry.getValue(), hosted);
-                        bundleTerms.add(hosted, literals[i], entry.getValue());
+                    for (ResolverResource attached : hosts) {
+                        int hosted = bundleVariable(attached, provider);
+                        clause(-literals[i], hosted);
+                        bundleTerms.add(hosted, literals[i]);
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * A fragment that was asked for explicitly is attached to every host it was selected for, any other fragment is
-     * attached as long as that is consistent, else it is left out of that host at a cost.
-     */
-    private void encodeAttachments(ResolverResource fragment, int self, int[] literals) {
-        if (mandatoryRoots.contains(fragment)) {
-            for (int literal : literals) {
-                clause(literal);
-            }
-            return;
-        }
-        clause(with(literals, -self));
-        for (int literal : literals) {
-            int detached = newVariable();
-            clause(literal, detached);
-            givenUp.add(detached);
         }
     }
 
@@ -355,9 +349,8 @@ final class UsesSolver extends PseudoBooleanProblem {
         if (declaring == capability.getOwner()) {
             return TRUE;
         }
-        Map<ResolverResource, Integer> hosts = attachments.get(declaring);
-        Integer literal = hosts == null ? null : hosts.get(capability.getOwner());
-        return literal == null ? FALSE : literal;
+        Set<ResolverResource> hosts = attachments.get(declaring);
+        return hosts != null && hosts.contains(capability.getOwner()) ? TRUE : FALSE;
     }
 
     /**
@@ -495,7 +488,7 @@ final class UsesSolver extends PseudoBooleanProblem {
         }
         int literal = sees.get(viewer).get(capability);
         for (String used : capability.getUses()) {
-            if (!index.reachesContested(used)) {
+            if (!relevant(used)) {
                 continue;
             }
             watchers.computeIfAbsent(exporter, k -> new LinkedHashMap<String, List<SeenUse>>())
@@ -562,13 +555,13 @@ final class UsesSolver extends PseudoBooleanProblem {
                     .equals(requirement.getDirectives().get(BundleNamespace.REQUIREMENT_VISIBILITY_DIRECTIVE))) {
                 continue;
             }
-            int attachment = requirement.getOwner() == bundle ? TRUE
-                    : attachments.getOrDefault(requirement.getOwner(), Collections.<ResolverResource, Integer> emptyMap()).getOrDefault(bundle, FALSE);
+            int attachment = requirement.getOwner() == bundle
+                    || attachments.getOrDefault(requirement.getOwner(), Collections.<ResolverResource> emptySet()).contains(bundle) ? TRUE
+                            : FALSE;
             for (Candidate candidate : usable.getOrDefault(requirement, Collections.<Candidate> emptyList())) {
                 int reexported = bundleVariable(user, candidate.getProvider());
                 clauseOnce(-source, -wires.get(candidate), not(attachment), reexported);
-                bundleTerms.add(reexported, attachment == TRUE ? new int[] { source, wires.get(candidate) }
-                        : new int[] { source, wires.get(candidate), attachment });
+                bundleTerms.add(reexported, new int[] { source, wires.get(candidate) });
             }
         }
     }
@@ -675,6 +668,19 @@ final class UsesSolver extends PseudoBooleanProblem {
                         return true;
                     }
                 }
+            }
+        }
+        return false;
+    }
+
+    private boolean relevant(String name) {
+        return relevant == null ? index.reachesContested(name) : relevant.contains(name);
+    }
+
+    private boolean relevant(Collection<String> names) {
+        for (String name : names) {
+            if (relevant(name)) {
+                return true;
             }
         }
         return false;

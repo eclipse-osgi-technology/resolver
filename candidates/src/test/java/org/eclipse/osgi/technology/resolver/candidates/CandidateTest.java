@@ -65,24 +65,6 @@ class CandidateTest {
     }
 
     @Test
-    void restoreBringsBackWhatAnAttemptChanged() {
-        importOfP();
-        Candidate chosen = graph.offer("b", "package", "p", "a");
-        Candidate other = graph.offer("b", "package", "p", "c");
-        chosen.select("Highest priority");
-        other.defer("Deferred");
-
-        chosen.defer("Switched to the other one");
-        other.select("Switched to resolve a conflict");
-        other.restore(CandidateState.DEFERRED, "Deferred");
-        chosen.restore(CandidateState.SELECTED, "Highest priority");
-
-        assertThat(chosen.getState()).isEqualTo(CandidateState.SELECTED);
-        assertThat(chosen.getReason()).isEqualTo("Highest priority");
-        assertThat(other.isAlternative()).isTrue();
-    }
-
-    @Test
     void aCandidateOfAFailedProviderIsNoAlternative() {
         importOfP();
         graph.offer("b", "package", "p", "a").select("Highest priority");

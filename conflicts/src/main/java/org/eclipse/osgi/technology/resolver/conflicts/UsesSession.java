@@ -10,10 +10,14 @@
 package org.eclipse.osgi.technology.resolver.conflicts;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
+import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
@@ -82,6 +86,28 @@ public interface UsesSession {
      * @return the violation, empty if the class space is consistent
      */
     Optional<UsesViolation> violationOf(ResolverResource resource);
+
+    /**
+     * The class space rule applied to the resolved resources of a collection, in
+     * parallel. Resources that are not resolved are skipped.
+     *
+     * @param resources the resources to check
+     * @return the violation of each resource that is not consistent, in the
+     *         order of the collection
+     */
+    default Map<ResolverResource, UsesViolation> violationsOf(Collection<ResolverResource> resources) {
+        List<ResolverResource> resolved = resources.stream().filter(r -> r.getState() == ResolveState.RESOLVED)
+                .collect(Collectors.toList());
+        List<UsesViolation> found = resolved.parallelStream().map(r -> violationOf(r).orElse(null))
+                .collect(Collectors.toList());
+        Map<ResolverResource, UsesViolation> violations = new LinkedHashMap<>();
+        for (int i = 0; i < resolved.size(); i++) {
+            if (found.get(i) != null) {
+                violations.put(resolved.get(i), found.get(i));
+            }
+        }
+        return violations;
+    }
 
     /**
      * Marks the current state of the graph, a strategy can change the graph to

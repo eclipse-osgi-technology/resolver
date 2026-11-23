@@ -11,26 +11,26 @@ package org.eclipse.osgi.technology.resolver.sat4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
-import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
 import org.eclipse.osgi.technology.resolver.candidates.UsesViolation;
 import org.eclipse.osgi.technology.resolver.conflicts.UsesConflictStrategy;
 import org.eclipse.osgi.technology.resolver.conflicts.UsesSession;
-import org.osgi.framework.namespace.HostNamespace;
 
 /**
  * A {@link UsesConflictStrategy} that decides the choices a class space conflict depends on with a pseudo boolean
  * solver (Sat4j).
  * If the selection by priority left class spaces inconsistent, the open choices (resolved resources, selected
- * candidates and the alternatives behind them, fragment attachments, substitutable exports) are encoded once with the
+ * candidates and the alternatives behind them, substitutable exports) are encoded with the
  * class space rule ({@link UsesSolver}) and solved with the objective: every optional resource resolved, nothing
- * given up or detached, every optional requirement wired, the candidate ranked first by the context.
+ * given up, every optional requirement wired, the candidate ranked first by the context.
+ * How much is encoded is chosen by the {@link Encoding}.
  * The solution is applied to the graph with reasons and checked with the rule again, anything the encoding let
  * through fails as it would without a solver.
  * <p>
@@ -41,16 +41,22 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
 
     private static final long DEFAULT_TIMEOUT_SECONDS = 60L;
 
+    private final Encoding encoding;
     private final long timeoutSeconds;
 
-    public Sat4jStrategy() {
-        this(DEFAULT_TIMEOUT_SECONDS);
+    /**
+     * @param encoding how much of the class space rule is encoded
+     */
+    public Sat4jStrategy(Encoding encoding) {
+        this(encoding, DEFAULT_TIMEOUT_SECONDS);
     }
 
     /**
+     * @param encoding how much of the class space rule is encoded
      * @param timeoutSeconds the time the solver may take per resolve, the best solution found so far is used after it
      */
-    public Sat4jStrategy(long timeoutSeconds) {
+    public Sat4jStrategy(Encoding encoding, long timeoutSeconds) {
+        this.encoding = encoding;
         this.timeoutSeconds = timeoutSeconds;
     }
 
@@ -60,7 +66,7 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
         boolean solved = false;
         boolean checkAll = false;
         while (true) {
-            Map<ResolverResource, UsesViolation> violations = violationsOf(session, dirty);
+            Map<ResolverResource, UsesViolation> violations = session.violationsOf(dirty);
             if (violations.isEmpty()) {
                 return;
             }
@@ -68,7 +74,7 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
             boolean failed;
             if (!solved) {
                 solved = true;
-                Solution solution = new UsesSolver(session, timeoutSeconds).solve(violations);
+                Solution solution = solve(session, violations);
                 if (solution == null) {
                     // no consistent assignment of the open choices: the conflicts stand as found
                     for (Map.Entry<ResolverResource, UsesViolation> entry : violations.entrySet()) {
@@ -99,28 +105,44 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
     }
 
     /**
-     * The class space rule applied to the resolved resources of a collection, in parallel.
+     * Solves with the encoding of the strategy.
+     * With a sliced encoding the solution is tried on the graph and asked about the rule, if it is not consistent the
+     * packages of its conflicts are added to the problem and it is solved again from the state the graph had before.
+     * A solution of fewer constraints that is consistent is the solution of all of them, so nothing is decided too
+     * early.
      *
-     * @return the violation of each resource that is not consistent, in the order of the collection
+     * @return the solution, {@code null} if there is none
      */
-    private static Map<ResolverResource, UsesViolation> violationsOf(UsesSession session,
-            Collection<ResolverResource> resources) {
-        List<ResolverResource> resolved = resources.stream().filter(r -> r.getState() == ResolveState.RESOLVED)
-                .collect(Collectors.toList());
-        List<UsesViolation> found = resolved.parallelStream().map(r -> session.violationOf(r).orElse(null))
-                .collect(Collectors.toList());
-        Map<ResolverResource, UsesViolation> violations = new LinkedHashMap<>();
-        for (int i = 0; i < resolved.size(); i++) {
-            if (found.get(i) != null) {
-                violations.put(resolved.get(i), found.get(i));
-            }
+    private Solution solve(UsesSession session, Map<ResolverResource, UsesViolation> violations) {
+        if (encoding == Encoding.FULL) {
+            return new UsesSolver(session, timeoutSeconds, null).solve(violations);
         }
-        return violations;
+        Set<String> names = namesOf(violations);
+        boolean all = false;
+        while (true) {
+            Solution solution = new UsesSolver(session, timeoutSeconds, all ? null : names).solve(violations);
+            if (solution == null || all) {
+                return solution;
+            }
+            Map<ResolverResource, UsesViolation> remaining;
+            try (Checkpoint trial = session.checkpoint()) {
+                if (apply(session, solution, violations, new ArrayList<>())) {
+                    session.propagateFailures();
+                }
+                remaining = session.violationsOf(session.getResources());
+                trial.rollback();
+            }
+            if (remaining.isEmpty()) {
+                return solution;
+            }
+            // a conflict on packages the problem covered already is one the encoding lets through: ask about all
+            all = !names.addAll(namesOf(remaining));
+        }
     }
 
     /**
-     * Applies what the solver decided: changed selections, fragments it detached and resources it gave up, which fail
-     * with their violation (or with the host requirement for a fragment no host is left for).
+     * Applies what the solver decided: changed selections and resources it gave up, which fail with their
+     * violation.
      *
      * @return true if a resource failed
      */
@@ -137,17 +159,14 @@ public final class Sat4jStrategy implements UsesConflictStrategy {
                 failed = true;
             }
         }
-        for (ResolverResource fragment : session.getResources()) {
-            if (fragment.isFragment() && fragment.getState() == ResolveState.RESOLVED
-                    && fragment.getHosts().isEmpty()) {
-                for (ResolverRequirement requirement : fragment.getResolverRequirements()) {
-                    if (HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
-                        fragment.markFailed(requirement);
-                        failed = true;
-                    }
-                }
-            }
-        }
         return failed;
+    }
+
+    private static Set<String> namesOf(Map<ResolverResource, UsesViolation> violations) {
+        Set<String> names = new HashSet<>();
+        for (UsesViolation violation : violations.values()) {
+            names.add(violation.getPackageName());
+        }
+        return names;
     }
 }

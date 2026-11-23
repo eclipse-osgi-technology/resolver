@@ -14,6 +14,7 @@ import java.util.Optional;
 
 import org.eclipse.osgi.technology.resolver.candidates.Candidate;
 import org.eclipse.osgi.technology.resolver.candidates.CandidateState;
+import org.eclipse.osgi.technology.resolver.candidates.Checkpoint;
 import org.eclipse.osgi.technology.resolver.candidates.ResolveState;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverRequirement;
 import org.eclipse.osgi.technology.resolver.candidates.ResolverResource;
@@ -23,7 +24,8 @@ import org.osgi.resource.Requirement;
 /**
  * A strategy that tries the alternatives of the choices behind a conflict, one
  * at a time: a change is kept if everything that can see it is consistent,
- * otherwise it is taken back. A resource that can not be repaired fails.
+ * otherwise it is taken back with a checkpoint. A resource whose conflict can not
+ * be decided fails.
  */
 final class SwapStrategy implements UsesConflictStrategy {
 
@@ -31,13 +33,13 @@ final class SwapStrategy implements UsesConflictStrategy {
     public void enforceUses(UsesSession session) {
         for (ResolverResource resource : session.getResources()) {
             Optional<UsesViolation> violation = session.violationOf(resource);
-            if (resource.getState() == ResolveState.RESOLVED && violation.isPresent() && !repair(session, resource)) {
+            if (resource.getState() == ResolveState.RESOLVED && violation.isPresent() && !decide(session, resource)) {
                 session.fail(resource, violation.get());
             }
         }
     }
 
-    private boolean repair(UsesSession session, ResolverResource resource) {
+    private boolean decide(UsesSession session, ResolverResource resource) {
         for (ResolverRequirement own : resource.getResolverRequirements()) {
             for (Requirement choice : session.getUsesGraph().reachable(own)) {
                 if (swap(session, resource, (ResolverRequirement) choice)) {
@@ -64,15 +66,14 @@ final class SwapStrategy implements UsesConflictStrategy {
         }
         for (Candidate alternative : requirement.getCandidates()) {
             if (alternative.isAlternative()) {
-                String selectedReason = selected.getReason();
-                String alternativeReason = alternative.getReason();
-                selected.defer("Replaced by " + alternative.getProvider().getName());
-                alternative.select("Selected to avoid a conflict");
-                if (!session.violationOf(resource).isPresent() && consistent(session, requirement)) {
-                    return true;
+                try (Checkpoint attempt = session.checkpoint()) {
+                    selected.defer("Replaced by " + alternative.getProvider().getName());
+                    alternative.select("Selected to avoid a conflict");
+                    if (!session.violationOf(resource).isPresent() && consistent(session, requirement)) {
+                        return true;
+                    }
+                    attempt.rollback();
                 }
-                alternative.restore(CandidateState.DEFERRED, alternativeReason);
-                selected.restore(CandidateState.SELECTED, selectedReason);
             }
         }
         return false;

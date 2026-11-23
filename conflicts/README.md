@@ -43,7 +43,9 @@ public final class FailingStrategy implements UsesConflictStrategy {
 
 ## How to use
 
-A strategy that repairs conflicts changes the selection through the `Candidate` of the graph (`defer`, `select`, `restore`), asks `UsesGraph` which choices matter for a conflict (`reachable`) and what a change can affect (`affected`, or `UsesSession.affected` for the resources), checks again with `violationOf` and takes the change back if it did not help.
+A strategy that decides conflicts changes the selection through the `Candidate` of the graph (`defer`, `select`).
+It asks `UsesGraph` which choices matter for a conflict (`reachable`) and what a change can affect (`affected`, or `UsesSession.affected` for the resources).
+It checks again with `violationOf` (`violationsOf` for several resources, in parallel) and takes the change back with a `Checkpoint` (`UsesSession.checkpoint()`) if it did not help.
 The tests show such a strategy on a small graph.
 Checks of different resources do not depend on each other, so `violationOf` may be called concurrently as long as nothing changes the graph at the same time (see the thread safety notes of the `candidates` module).
 Resources, requirements and capabilities are compared by identity, and results are in a stable order, a strategy has to keep that, or its results differ from run to run.

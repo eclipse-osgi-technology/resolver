@@ -249,7 +249,7 @@ Feature: Substitution of exported packages
 
     Scenario: A bundle keeps the export it substitutes when a requirer of it needs it for a uses constraint
       The requirer requires "a", that substitutes "p" by the higher version of "b", and imports "q" that uses "p" from the lower version.
-      The conflict is repaired by "a" keeping its export, as the provider of "q" can import it from there.
+      The conflict is avoided by "a" keeping its export, as the provider of "q" can import it from there.
       Given there is bundle "a"
       And it exports package "p" in version "1.0.0"
       And it imports package "p" in version range "[1.0,2.0)"

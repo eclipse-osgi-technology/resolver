@@ -67,8 +67,8 @@ final class Solution {
         for (Map.Entry<ResolverRequirement, List<Candidate>> entry : problem.usable.entrySet()) {
             ResolverRequirement requirement = entry.getKey();
             if (HostNamespace.HOST_NAMESPACE.equals(requirement.getNamespace())) {
-                // a fragment that is given up is detached from every host, so the hosts lose its imports
-                applyAttachments(requirement, entry.getValue(), changed);
+                // the attachment of a fragment is not a choice of the problem
+                continue;
             } else if (!isResolved(requirement.getOwner())) {
                 continue;
             } else if (requirement.isMultiple()) {
@@ -84,24 +84,6 @@ final class Solution {
             }
         }
         return given;
-    }
-
-    private void applyAttachments(ResolverRequirement requirement, List<Candidate> candidates,
-            List<ResolverRequirement> changed) {
-        ResolverResource fragment = requirement.getOwner();
-        for (Candidate candidate : candidates) {
-            if (candidate.getState() == CandidateState.SELECTED
-                    && (!truth[problem.wires.get(candidate)] || !isResolved(fragment))) {
-                ResolverResource host = candidate.getProvider();
-                UsesViolation violation = violations.get(host);
-                fragment.detachFrom(host, "Not attached to " + host.getName() + " by the constraint solver"
-                        + (violation == null ? ", the class space of the host would be inconsistent with it" : ", " + violation));
-                List<ResolverResource> remaining = new ArrayList<>(host.getAttachedFragments());
-                remaining.remove(fragment);
-                host.setAttachedFragments(remaining);
-                changed.addAll(fragment.getResolverRequirements());
-            }
-        }
     }
 
     private void applyMultiple(ResolverRequirement requirement, List<Candidate> candidates,

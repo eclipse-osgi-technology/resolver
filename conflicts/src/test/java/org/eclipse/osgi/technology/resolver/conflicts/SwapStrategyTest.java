@@ -23,7 +23,7 @@ import aQute.bnd.header.Attrs;
 /**
  * A strategy works on the session a resolver hands it: it asks for the
  * violation of a resource, changes the selection through the candidates, asks
- * the graph what a change can affect and fails what it can not repair.
+ * the graph what a change can affect and fails what it can not make consistent.
  */
 class SwapStrategyTest {
 
@@ -43,7 +43,7 @@ class SwapStrategyTest {
     }
 
     @Test
-    void aConflictIsRepairedByAnotherChoiceBehindTheUsesChain() {
+    void aConflictIsDecidedByAnotherChoiceBehindTheUsesChain() {
         exporterOfPThatUsesQ("[1,3)");
         scenario.select("a", "q", "q1");
         scenario.select("b", "p", "a");

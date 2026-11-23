@@ -146,16 +146,6 @@ public class Candidate {
         return state == CandidateState.AVAILABLE || state == CandidateState.SELECTED;
     }
 
-    /**
-     * Brings the candidate back to a state it had before.
-     *
-     * @param state the state to restore
-     * @param reason the reason to restore
-     */
-    public void restore(CandidateState state, String reason) {
-        change(state, reason);
-    }
-
     private void change(CandidateState newState, String newReason) {
         PackageViewCache cache = requirement.getOwner().getPackageViewCache();
         if (cache.isRecording()) {
