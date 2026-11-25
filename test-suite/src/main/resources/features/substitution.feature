@@ -446,6 +446,25 @@ Feature: Substitution of exported packages
       When I resolve bundle "user" and bundle "old-consumer"
       Then the resolution fails because of a uses constraint violation on package "api" for bundle "user"
 
+    Scenario: An optional consumer that loses its provider to a substitution is left out
+      Nobody asked for "old-consumer" to be resolved and "user" is fine without it, so it is left out like any other optional bundle that can not be resolved.
+      Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+      And there is bundle "api-1.1"
+      And it exports package "api" in version "1.1.0"
+      And there is bundle "impl"
+      And it exports package "api" in version "1.0.0"
+      And it imports package "api" in version range "[1.0,2.0)"
+      And it exports package "util" using "api"
+      And there is bundle "user"
+      And it imports package "util"
+      And it imports package "api" in version range "[1.1,2.0)"
+      And there is bundle "old-consumer"
+      And it imports package "api" in version range "[1.0,1.1)"
+      When I resolve bundle "user" and optionally bundle "old-consumer"
+      Then the resolution succeeds
+      And bundle "user" is resolved
+      And bundle "old-consumer" is not resolved
+
   Rule: A substitutable export can be wired to either of two exporters but not to both at once
     Background:
       Given there is bundle "A"
