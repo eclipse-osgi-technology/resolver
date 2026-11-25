@@ -29,6 +29,8 @@ If it is not, new permutations are queued and the next one is tried:
 The queue is ordered like in Felix: permutations for the uses conflict first, then for imports, then for substitutions.
 A candidate is only dropped if its requirement has another candidate or is optional, and an export is never dropped when it is the only way for a dependent resource to be resolved.
 If no permutation is consistent, the resources that were inconsistent in the best permutation fail.
+A permutation is better if fewer mandatory resources are inconsistent in it, then if fewer resources are.
+A permutation that leaves an optional resource without a provider counts as the loss of that resource.
 If some of them were only asked for optionally, only those fail and the search starts again.
 
 ## Theory and references

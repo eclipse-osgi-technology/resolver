@@ -51,6 +51,20 @@ public interface ResolverEngine {
     }
 
     /**
+     * Tells whether the scenarios that rely on the interpretation of the
+     * specification that is proposed by the given issue or pull request apply to
+     * the resolver. The scenarios of an interpretation that is not settled yet
+     * are skipped if this returns {@code false}.
+     *
+     * @param reference the GitHub reference, {@code <owner>/<repository>#<number>}
+     * @return {@code true} if the scenarios apply, by default for every
+     *         reference
+     */
+    default boolean assumeValid(String reference) {
+        return true;
+    }
+
+    /**
      * Resolves the resources of the context.
      *
      * @param context the context

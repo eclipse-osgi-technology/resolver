@@ -11,6 +11,7 @@ package org.eclipse.osgi.technology.resolver.permutation;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -31,8 +32,9 @@ import org.eclipse.osgi.technology.resolver.conflicts.UsesSession;
  * candidates of the requirements that are to blame for it are dropped, both from the side of the resource and from
  * the side of the provider, and the imports on the way to the conflict are backtracked.
  * The permutations are tried in a fixed order (see {@link PermutationQueue}) and every one only once.
- * If none is left, the resources that were inconsistent in the best permutation fail, if only resources nobody asked
- * for explicitly are lost the search starts again without them.
+ * If none is left, the resources that were inconsistent in the best permutation (the one that loses the fewest
+ * mandatory resources, then the fewest resources) fail, if only resources nobody asked for explicitly are lost the
+ * search starts again without them.
  * The strategy keeps no state, the state of one run is a {@link GraphState}.
  */
 public final class PermutationSearch implements UsesConflictStrategy {
@@ -69,10 +71,16 @@ public final class PermutationSearch implements UsesConflictStrategy {
                 last = check.getUnresolvable();
             }
             Map<ResolverResource, Fault> faulty = check.getFaulty();
+            if (faulty.isEmpty() && check.getUnresolvable() != null
+                    && session.getOptional().contains(check.getUnresolvable().getResource())) {
+                // a permutation that leaves an optional resource without a provider loses that resource only
+                faulty = Collections.singletonMap(check.getUnresolvable().getResource(), check.getUnresolvable());
+            }
             if (!faulty.isEmpty()) {
                 last = faulty.values().iterator().next();
-                // the first inconsistent permutation tells the resources, later ones only if fewer are lost
-                if (best == null || faulty.size() < best.size()) {
+                // the first inconsistent permutation tells the resources, later ones only if fewer are lost,
+                // losing an optional resource is preferred over losing a mandatory one
+                if (best == null || isBetter(session, faulty, best)) {
                     best = faulty;
                 }
             }
@@ -83,6 +91,23 @@ public final class PermutationSearch implements UsesConflictStrategy {
             faults.add(last);
         }
         return fail(session, faults);
+    }
+
+    private static boolean isBetter(UsesSession session, Map<ResolverResource, Fault> faulty,
+            Map<ResolverResource, Fault> best) {
+        int mandatory = mandatoryCount(session, faulty);
+        int bestMandatory = mandatoryCount(session, best);
+        return mandatory < bestMandatory || mandatory == bestMandatory && faulty.size() < best.size();
+    }
+
+    private static int mandatoryCount(UsesSession session, Map<ResolverResource, Fault> faulty) {
+        int count = 0;
+        for (ResolverResource resource : faulty.keySet()) {
+            if (session.getMandatory().contains(resource)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static void commit(GraphState state, ConsistencyCheck check) {

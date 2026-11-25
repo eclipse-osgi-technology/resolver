@@ -293,6 +293,90 @@ Feature: Resolving uses conflicts
       And bundle "assertj" is resolved
       And bundle "assertj" is wired to bundle "hamcrest" for package "matchers"
 
+    Scenario: An optional bundle that would force the shared provider to change is left out
+      The resolver "must find a solution that includes at least the initial mandatory resources and should include the optional resources".
+      A solution without "consumer-b" exists, so failing the resolve is not conforming.
+      Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+      And there is bundle "middle"
+      And it imports package "p"
+      And it exports package "q" using "p"
+      And there is bundle "consumer-a"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "consumer-b"
+      And it imports package "q"
+      And it imports package "p" in version range "[2.0,3.0)"
+      When I resolve bundle "consumer-a" and optionally bundle "consumer-b"
+      Then the resolution succeeds
+      And bundle "consumer-a" is resolved
+      And bundle "consumer-b" is not resolved
+
+    Scenario: Only the optional bundle that is in the way is left out
+      Only "consumer-b" is in the way, "consumer-c" is happy with either version and has to stay.
+      Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+      And there is bundle "middle"
+      And it imports package "p"
+      And it exports package "q" using "p"
+      And there is bundle "consumer-a"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "consumer-b"
+      And it imports package "q"
+      And it imports package "p" in version range "[2.0,3.0)"
+      And there is bundle "consumer-c"
+      And it imports package "q"
+      And it imports package "p"
+      When I resolve bundle "consumer-a" and optionally the bundles "consumer-b, consumer-c"
+      Then the resolution succeeds
+      And bundle "consumer-a" is resolved
+      And bundle "consumer-b" is not resolved
+      And bundle "consumer-c" is resolved
+      And bundle "consumer-c" is wired to bundle "p-1" for package "p"
+
+    Scenario: Leaving out an optional bundle takes the optional bundles that need it with it
+      Leaving out "consumer-b" takes "user-of-b" with it, the unrelated optional bundle stays.
+      Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+      And there is bundle "middle"
+      And it imports package "p"
+      And it exports package "q" using "p"
+      And there is bundle "consumer-a"
+      And it imports package "q"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "consumer-b"
+      And it imports package "q"
+      And it imports package "p" in version range "[2.0,3.0)"
+      And it exports package "b"
+      And there is bundle "user-of-b"
+      And it imports package "b"
+      And there is bundle "unrelated"
+      When I resolve bundle "consumer-a" and optionally the bundles "consumer-b, user-of-b, unrelated"
+      Then the resolution succeeds
+      And bundle "consumer-a" is resolved
+      And bundle "consumer-b" is not resolved
+      And bundle "user-of-b" is not resolved
+      And bundle "unrelated" is resolved
+
+    Scenario: An optional bundle is left out although the conflict is two levels below it
+      The provider of "p" has to change two levels down, which an optional bundle on the top level prevents.
+      Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+      And there is bundle "low"
+      And it imports package "p"
+      And it exports package "q" using "p"
+      And there is bundle "high"
+      And it imports package "q"
+      And it exports package "r" using "q"
+      And there is bundle "consumer-a"
+      And it imports package "r"
+      And it imports package "p" in version range "[1.0,2.0)"
+      And there is bundle "consumer-b"
+      And it imports package "r"
+      And it imports package "p" in version range "[2.0,3.0)"
+      When I resolve bundle "consumer-a" and optionally bundle "consumer-b"
+      Then the resolution succeeds
+      And bundle "low" is wired to bundle "p-1" for package "p"
+      And bundle "consumer-a" is resolved
+      And bundle "consumer-b" is not resolved
+
   Rule: A resource that can not be resolved does not take the resources it was tried with down
     Optional resources are independent, the failure of one is no reason to leave out another.
     A bundle that imports from two versions of a library, one of which dropped a package, can never get a consistent class space.

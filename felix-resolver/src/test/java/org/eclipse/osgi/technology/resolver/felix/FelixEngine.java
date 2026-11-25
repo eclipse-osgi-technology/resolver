@@ -40,6 +40,12 @@ public class FelixEngine implements ResolverEngine {
     }
 
     @Override
+    public boolean assumeValid(String reference) {
+        // a conflict of an optional resource fails the resolve instead of leaving the resource out
+        return !"osgi/org.osgi.service.resolver#54".equals(reference);
+    }
+
+    @Override
     public Map<Resource, List<Wire>> resolve(ResolveContext context) throws ResolutionException {
         return resolver.resolve(context);
     }
