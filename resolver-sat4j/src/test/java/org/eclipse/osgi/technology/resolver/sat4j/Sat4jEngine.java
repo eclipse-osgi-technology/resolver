@@ -18,6 +18,7 @@ import java.util.Map;
 import org.eclipse.osgi.technology.resolver.failures.ExportSubstitutedException;
 import org.eclipse.osgi.technology.resolver.failures.UnsatisfiedRequirementException;
 import org.eclipse.osgi.technology.resolver.failures.UsesConstraintViolationException;
+import org.eclipse.osgi.technology.resolver.testsuite.Interpretation;
 import org.eclipse.osgi.technology.resolver.testsuite.ResolverEngine;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Namespace;
@@ -34,6 +35,11 @@ import org.osgi.service.resolver.ResolveContext;
 public class Sat4jEngine implements ResolverEngine {
 
     static final String ENCODING_PROPERTY = "org.eclipse.osgi.technology.resolver.sat4j.encoding";
+
+    @Override
+    public Interpretation assumeValid(String reference) {
+        return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
+    }
 
     @Override
     public String name() {
