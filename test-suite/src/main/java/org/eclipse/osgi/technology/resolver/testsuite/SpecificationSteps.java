@@ -40,6 +40,29 @@ public class SpecificationSteps {
     @Given("that {word} is a valid interpretation of the specification")
     public void validInterpretation(String reference) {
         assumeThat(world.engine().assumeValid(reference)).as("the resolver follows the interpretation of " + reference)
-                .isTrue();
+                .isNotEqualTo(Interpretation.DENY);
+        world.interpretation(reference);
+    }
+
+    /**
+     * Skips the scenario unless the resolver produces the given outcome of the
+     * proposal that was stated before.
+     *
+     * @param option the name of the option, for example {@code A}
+     */
+    @Given("the resolver leans towards Option {word}")
+    public void option(String option) {
+        assumeOption(Interpretation.valueOf("OPTION_" + option));
+    }
+
+    private void assumeOption(Interpretation option) {
+        String reference = world.interpretation();
+        assumeThat(reference).as("a step that states the interpretation comes first").isNotNull();
+        Interpretation answer = world.engine().assumeValid(reference);
+        if (answer == Interpretation.ACCEPT) {
+            throw new AssertionError(
+                    "Engine has to either choose option A or B for " + reference + " but answered ACCEPT");
+        }
+        assumeThat(answer).as("the option the resolver leans towards").isEqualTo(option);
     }
 }

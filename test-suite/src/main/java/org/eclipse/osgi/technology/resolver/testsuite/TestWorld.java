@@ -34,6 +34,7 @@ public class TestWorld {
     private final ResolverEngine engine = loadEngine();
     private BundleBuilder current;
     private ResolveContext context;
+    private String interpretation;
 
     private static ResolverEngine loadEngine() {
         return ServiceLoader.load(ResolverEngine.class).findFirst().orElseThrow(
@@ -156,6 +157,25 @@ public class TestWorld {
         commit();
         context = engine.createContext(available, List.of(), List.copyOf(available));
         return engine.resolve(context);
+    }
+
+    /**
+     * Returns the reference of the interpretation the running scenario depends
+     * on.
+     *
+     * @return the reference, {@code null} if none was stated
+     */
+    public String interpretation() {
+        return interpretation;
+    }
+
+    /**
+     * Records the interpretation the running scenario depends on.
+     *
+     * @param reference the GitHub reference of the proposal
+     */
+    public void interpretation(String reference) {
+        this.interpretation = reference;
     }
 
     /**

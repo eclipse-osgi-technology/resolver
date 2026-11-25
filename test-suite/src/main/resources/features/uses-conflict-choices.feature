@@ -438,3 +438,38 @@ Feature: Resolving uses conflicts
       And bundle "app" is wired to bundle "framework" for package "report"
       And bundle "app" is wired to bundle "base-1" for package "util"
       And bundle "framework" is wired to bundle "base-1" for package "util"
+
+  Rule: A package the conflict does not involve either stays with the preferred provider or moves with the others
+    The specification asks for a consistent class space and for the order of preference otherwise.
+    It is open whether "text", that is not part of the conflict, stays with the preferred provider while the other imports of the bundle move.
+    Both outcomes are consistent, a resolver follows one of them and skips the scenario of the other one.
+
+    Background:
+      Given that osgi/org.osgi.framework#81 is a valid interpretation of the specification
+      And there is bundle "stdlib-common"
+      And it exports package "text" in version "1.0.0"
+      And it exports package "collections" in version "1.0.0"
+      And there is bundle "stdlib"
+      And it exports package "text" in version "1.0.0"
+      And it exports package "collections" in version "1.0.0"
+      And it exports package "functions" in version "1.0.0" using "collections"
+      And there is bundle "app"
+      And it imports package "text" in version range "[1.0,2.0)"
+      And it imports package "collections" in version range "[1.0,2.0)"
+      And it imports package "functions" in version range "[1.0,2.0)"
+
+    Scenario: Option A: an import that is not part of the conflict stays with the preferred provider
+      Given the resolver leans towards Option A
+      When I resolve bundle "app"
+      Then the resolution succeeds
+      And bundle "app" is wired to bundle "stdlib" for package "collections"
+      And bundle "app" is wired to bundle "stdlib" for package "functions"
+      And bundle "app" is wired to bundle "stdlib-common" for package "text"
+
+    Scenario: Option B: an import that is not part of the conflict moves with the others
+      Given the resolver leans towards Option B
+      When I resolve bundle "app"
+      Then the resolution succeeds
+      And bundle "app" is wired to bundle "stdlib" for package "collections"
+      And bundle "app" is wired to bundle "stdlib" for package "functions"
+      And bundle "app" is wired to bundle "stdlib" for package "text"

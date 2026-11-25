@@ -51,18 +51,18 @@ public interface ResolverEngine {
     }
 
     /**
-     * Tells whether the scenarios that rely on the interpretation of the
-     * specification that is proposed by the given issue or pull request apply to
-     * the resolver. The scenarios of an interpretation that is not settled yet
-     * are skipped if this returns {@code false}.
+     * Tells how the resolver relates to the interpretation of the specification
+     * that is proposed by the given issue or pull request. The scenarios of an
+     * interpretation that is not settled yet are skipped if this returns
+     * {@link Interpretation#DENY}. If the proposal names two valid outcomes, the
+     * resolver answers {@link Interpretation#OPTION_A} or
+     * {@link Interpretation#OPTION_B} and only the scenarios of its option
+     * apply.
      *
      * @param reference the GitHub reference, {@code <owner>/<repository>#<number>}
-     * @return {@code true} if the scenarios apply, by default for every
-     *         reference
+     * @return the relation to the interpretation
      */
-    default boolean assumeValid(String reference) {
-        return true;
-    }
+    Interpretation assumeValid(String reference);
 
     /**
      * Resolves the resources of the context.

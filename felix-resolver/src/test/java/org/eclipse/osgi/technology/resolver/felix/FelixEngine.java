@@ -19,6 +19,7 @@ import org.apache.felix.resolver.Logger;
 import org.apache.felix.resolver.ResolverImpl;
 import org.apache.felix.resolver.reason.ReasonException;
 import org.apache.felix.resolver.reason.ReasonException.Reason;
+import org.eclipse.osgi.technology.resolver.testsuite.Interpretation;
 import org.eclipse.osgi.technology.resolver.testsuite.ResolverEngine;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Namespace;
@@ -40,9 +41,12 @@ public class FelixEngine implements ResolverEngine {
     }
 
     @Override
-    public boolean assumeValid(String reference) {
-        // a conflict of an optional resource fails the resolve instead of leaving the resource out
-        return !"osgi/org.osgi.service.resolver#54".equals(reference);
+    public Interpretation assumeValid(String reference) {
+        if ("osgi/org.osgi.service.resolver#54".equals(reference)) {
+            // a conflict of an optional resource fails the resolve instead of leaving the resource out
+            return Interpretation.DENY;
+        }
+        return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
     }
 
     @Override
