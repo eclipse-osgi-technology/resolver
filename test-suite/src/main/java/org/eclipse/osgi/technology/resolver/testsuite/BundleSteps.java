@@ -192,6 +192,17 @@ public class BundleSteps {
     }
 
     /**
+     * Imports a package with the cardinality multiple, which the namespace of a
+     * package requirement does not honour.
+     *
+     * @param name the package name
+     */
+    @Given("it imports package {string} with multiple cardinality")
+    public void itImportsPackageWithMultipleCardinality(String name) {
+        bundle().addImportPackage(name, new Attrs().with("cardinality:", "multiple"));
+    }
+
+    /**
      * Imports a package optionally, the bundle resolves without an exporter.
      *
      * @param name the package name
@@ -267,6 +278,17 @@ public class BundleSteps {
     @Given("it requires bundle {string} in version range {string}")
     public void itRequiresBundleInRange(String name, String range) {
         bundle().addRequireBundle(name, new Attrs().with("bundle-version", range));
+    }
+
+    /**
+     * Requires a bundle with the cardinality multiple, which the namespace of a
+     * bundle requirement does not honour.
+     *
+     * @param name the symbolic name of the required bundle
+     */
+    @Given("it requires bundle {string} with multiple cardinality")
+    public void itRequiresBundleWithMultipleCardinality(String name) {
+        bundle().addRequireBundle(name, new Attrs().with("cardinality:", "multiple"));
     }
 
     /**
