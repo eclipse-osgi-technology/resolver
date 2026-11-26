@@ -224,6 +224,19 @@ public class BundleSteps {
     }
 
     /**
+     * Imports a package from a specific exporting bundle in a range of its
+     * bundle version.
+     *
+     * @param name   the package name
+     * @param bundle the symbolic name of the bundle that has to export it
+     * @param range  the range of the bundle version of the exporter
+     */
+    @Given("it imports package {string} from bundle {string} in bundle version range {string}")
+    public void itImportsPackageFromBundleInRange(String name, String bundle, String range) {
+        bundle().addImportPackage(name, new Attrs().with("bundle-symbolic-name", bundle).with("bundle-version", range));
+    }
+
+    /**
      * Imports a package dynamically, which is only wired on request and not
      * when resolving.
      *

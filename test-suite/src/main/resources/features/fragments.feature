@@ -365,3 +365,25 @@ Feature: Fragment bundles
     Then the resolution succeeds
     And bundle "compat" is resolved
     And bundle "user" is resolved
+
+  Rule: A package exported by a fragment is matched with the attributes of its host
+    The framework associates the bundle-symbolic-name and bundle-version of the host with a package a fragment exports.
+    It is open who makes these values visible: the resolve context offers the package for a requirement that matches the host, or the resolver does it itself.
+    Both outcomes are the same wiring, a resolver follows one of them and skips the scenario of the other one.
+
+    Background:
+      Given that osgi/org.osgi.service.resolver#57 is a valid interpretation of the specification
+      And there is bundle "host" version 1.0.0
+      And there is a fragment bundle "fragment" version 2.0.0 of bundle "host"
+      And it exports package "foo"
+      And there is bundle "importer"
+      And it imports package "foo" from bundle "host" in bundle version range "[1.0,2.0)"
+      When I resolve bundle "importer" and bundle "fragment"
+      Then the resolution succeeds
+      And bundle "importer" is wired to bundle "host" for package "foo"
+
+    Scenario: Option A: the resolve context offers the package of a fragment for the name of the host
+      Given the resolver leans towards Option A
+
+    Scenario: Option B: the resolver matches the package of a fragment with the name of the host
+      Given the resolver leans towards Option B
