@@ -257,6 +257,44 @@ Feature: Fragment bundles
     And bundle "good" is wired to bundle "host"
     And bundle "importer" is wired to bundle "host" for package "foo"
 
+  Scenario: A fragment that conflicts with one host is attached to the other
+    A fragment is attached to each host individually, a host that can not be resolved with it is resolved without it.
+    Given that osgi/org.osgi.service.resolver#56 is a valid interpretation of the specification
+    And there is bundle "p-1"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "p-2"
+    And it exports package "p" in version "2.0.0"
+    And there is bundle "host" version 1.0.0
+    And it imports package "p" in version range "[2.0,3.0)"
+    And there is bundle "host" version 2.0.0
+    And it imports package "p" in version range "[1.0,2.0)"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it imports package "p" in version range "[1.0,2.0)"
+    When I resolve all bundles as optional resources
+    Then bundle "host" version 1.0.0 is resolved
+    And bundle "host" version 2.0.0 is resolved
+    And bundle "fragment" is wired to bundle "host" version 2.0.0
+    And bundle "fragment" is not wired to bundle "host" version 1.0.0
+
+  Scenario: A package of a fragment that is not attached can not be imported
+    Nobody asked for the importer to be resolved and a fragment that is not attached to a host provides nothing to anyone.
+    Given that osgi/org.osgi.service.resolver#54 is a valid interpretation of the specification
+    And there is bundle "p-1"
+    And it exports package "p" in version "1.0.0"
+    And there is bundle "p-2"
+    And it exports package "p" in version "2.0.0"
+    And there is bundle "host"
+    And it imports package "p" in version range "[2.0,3.0)"
+    And there is a fragment bundle "fragment" of bundle "host"
+    And it imports package "p" in version range "[1.0,2.0)"
+    And it exports package "foo"
+    And there is bundle "importer"
+    And it imports package "foo"
+    When I resolve all bundles as optional resources
+    Then bundle "host" is resolved
+    And bundle "fragment" is not resolved
+    And bundle "importer" is not resolved
+
   Scenario: A package exported by the host can be imported by the name of the host
     Given there is bundle "host"
     And it exports package "foo"

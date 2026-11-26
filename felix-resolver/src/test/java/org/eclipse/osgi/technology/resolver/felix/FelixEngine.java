@@ -50,6 +50,10 @@ public class FelixEngine implements ResolverEngine {
             // every exporter of the package is wired, which breaks the class space
             return Interpretation.DENY;
         }
+        if ("osgi/org.osgi.service.resolver#56".equals(reference)) {
+            // a fragment that conflicts with one host is dropped for all hosts
+            return Interpretation.DENY;
+        }
         return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
     }
 
