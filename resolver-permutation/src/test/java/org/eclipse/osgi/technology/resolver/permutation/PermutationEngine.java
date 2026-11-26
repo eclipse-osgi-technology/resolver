@@ -35,6 +35,10 @@ public class PermutationEngine implements ResolverEngine {
 
     @Override
     public Interpretation assumeValid(String reference) {
+        if ("osgi/org.osgi.service.resolver#57".equals(reference)) {
+            // the phases look at the hosts of a fragment themselves when they match a package requirement
+            return Interpretation.OPTION_B;
+        }
         return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
     }
 

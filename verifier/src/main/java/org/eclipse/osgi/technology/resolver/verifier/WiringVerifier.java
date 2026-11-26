@@ -165,7 +165,7 @@ public final class WiringVerifier {
         }
         if (!requirement.getNamespace().equals(capability.getNamespace())) {
             violations.add(text + " connects different namespaces");
-        } else if (!filterMatches(requirement, capability)) {
+        } else if (!filterMatches(requirement, capability, wire.getProvider())) {
             violations.add(text + " ends in a capability that does not match the filter "
                     + requirement.getDirectives().get(Namespace.REQUIREMENT_FILTER_DIRECTIVE));
         } else if (!mandatoryAttributesAreRequested(requirement, capability)) {
@@ -227,7 +227,7 @@ public final class WiringVerifier {
             }
             for (Resource declarer : declaring) {
                 for (Capability capability : declarer.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE)) {
-                    if (filterMatches(requirement, capability)
+                    if (filterMatches(requirement, capability, resource)
                             && mandatoryAttributesAreRequested(requirement, capability)) {
                         return true;
                     }
@@ -319,17 +319,39 @@ public final class WiringVerifier {
                 .equals(requirement.getDirectives().get(Namespace.REQUIREMENT_CARDINALITY_DIRECTIVE));
     }
 
-    private static boolean filterMatches(Requirement requirement, Capability capability) {
+    private static boolean filterMatches(Requirement requirement, Capability capability, Resource provider) {
         String text = requirement.getDirectives().get(Namespace.REQUIREMENT_FILTER_DIRECTIVE);
         if (text == null) {
             return true;
         }
         try {
             Filter filter = FrameworkUtil.createFilter(text);
-            return filter.matches(capability.getAttributes());
+            return filter.matches(viewedFrom(capability, provider));
         } catch (InvalidSyntaxException e) {
             return false;
         }
+    }
+
+    /**
+     * The framework associates the symbolic name and version of the host with
+     * a package exported by a fragment, so a wire to such a capability is
+     * matched with the attributes it has as provided by the host.
+     */
+    private static Map<String, Object> viewedFrom(Capability capability, Resource provider) {
+        if (!PackageNamespace.PACKAGE_NAMESPACE.equals(capability.getNamespace())
+                || capability.getResource().equals(provider)
+                || capability.getResource().getRequirements(HostNamespace.HOST_NAMESPACE).isEmpty()) {
+            return capability.getAttributes();
+        }
+        Map<String, Object> attributes = new HashMap<>(capability.getAttributes());
+        for (Capability host : provider.getCapabilities(HostNamespace.HOST_NAMESPACE)) {
+            attributes.put(PackageNamespace.CAPABILITY_BUNDLE_SYMBOLICNAME_ATTRIBUTE,
+                    host.getAttributes().get(HostNamespace.HOST_NAMESPACE));
+            attributes.put(PackageNamespace.CAPABILITY_BUNDLE_VERSION_ATTRIBUTE,
+                    host.getAttributes().get(HostNamespace.CAPABILITY_BUNDLE_VERSION_ATTRIBUTE));
+            break;
+        }
+        return attributes;
     }
 
     /** The {@code mandatory} directive of the osgi.wiring.* namespaces: every named attribute has to be requested. */

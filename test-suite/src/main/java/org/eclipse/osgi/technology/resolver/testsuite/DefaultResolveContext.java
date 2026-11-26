@@ -78,8 +78,11 @@ public class DefaultResolveContext extends ResolveContext {
     /**
      * The version of a capability as defined by its namespace, a capability
      * without one has the lowest version.
+     *
+     * @param capability the capability to get the version of
+     * @return the version of the capability
      */
-    private static Version version(Capability capability) {
+    public static Version version(Capability capability) {
         Version version = ResourceUtils.getVersion(capability);
         return version == null ? Version.LOWEST : version;
     }

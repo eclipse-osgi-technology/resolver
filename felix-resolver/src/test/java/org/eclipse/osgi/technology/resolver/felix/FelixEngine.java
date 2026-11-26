@@ -12,6 +12,7 @@ package org.eclipse.osgi.technology.resolver.felix;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -54,7 +55,17 @@ public class FelixEngine implements ResolverEngine {
             // a fragment that conflicts with one host is dropped for all hosts
             return Interpretation.DENY;
         }
+        if ("osgi/org.osgi.service.resolver#57".equals(reference)) {
+            // the resolver relies on the context to offer a package of a fragment for the attributes of its host
+            return Interpretation.OPTION_A;
+        }
         return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
+    }
+
+    @Override
+    public ResolveContext createContext(Collection<Resource> available, Collection<Resource> mandatory,
+            Collection<Resource> optional) {
+        return new HostAttributesResolveContext(available, mandatory, optional);
     }
 
     @Override
