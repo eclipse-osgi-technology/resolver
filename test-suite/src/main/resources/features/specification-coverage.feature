@@ -59,6 +59,35 @@ Feature: Specification coverage
       When I resolve bundle "consumer"
       Then the resolution succeeds
 
+  Rule: The cardinality directive has no effect on a package or bundle requirement
+
+    The requirement is wired to at most one capability, even if it says multiple and several capabilities match.
+    Other namespaces honour the directive, see generic-capabilities.feature.
+
+    Background:
+      Given that osgi/org.osgi.framework#82 is a valid interpretation of the specification
+
+    Scenario: A bundle is required with cardinality multiple
+      Given there is bundle "lib" version 1.0.0
+      And there is bundle "lib" version 2.0.0
+      And there is bundle "consumer"
+      And it requires bundle "lib" with multiple cardinality
+      When I resolve bundle "consumer"
+      Then the resolution succeeds
+      And bundle "consumer" is wired to bundle "lib" version 2.0.0
+      And bundle "consumer" has 1 wire
+
+    Scenario: A package is imported with cardinality multiple
+      Given there is bundle "first"
+      And it exports package "p"
+      And there is bundle "second"
+      And it exports package "p"
+      And there is bundle "consumer"
+      And it imports package "p" with multiple cardinality
+      When I resolve bundle "consumer"
+      Then the resolution succeeds
+      And bundle "consumer" has 1 wire
+
   Rule: Version ranges and filters follow their grammar
 
     Scenario Outline: An exclusive or inclusive bound of a version range

@@ -46,6 +46,10 @@ public class FelixEngine implements ResolverEngine {
             // a conflict of an optional resource fails the resolve instead of leaving the resource out
             return Interpretation.DENY;
         }
+        if ("osgi/org.osgi.framework#82".equals(reference)) {
+            // every exporter of the package is wired, which breaks the class space
+            return Interpretation.DENY;
+        }
         return "osgi/org.osgi.framework#81".equals(reference) ? Interpretation.OPTION_A : Interpretation.ACCEPT;
     }
 
