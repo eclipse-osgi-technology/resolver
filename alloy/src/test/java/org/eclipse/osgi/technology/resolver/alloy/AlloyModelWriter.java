@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 class AlloyModelWriter {
 
     private static final String SCOPE = " for exactly 1 Resolution, 0 Pkg, 0 Bundle, 0 Export, 0 Import,"
-            + " 0 MandatoryImport, 0 OptionalImport\n";
+            + " 0 MandatoryImport, 0 OptionalImport, 0 Require, 0 MandatoryRequire, 0 OptionalRequire\n";
 
     static String write(AlloyWorld world, String title) {
         StringBuilder sb = new StringBuilder();
@@ -42,6 +42,8 @@ class AlloyModelWriter {
             b.exports.forEach(e -> sb.append("one sig ").append(e.atom()).append(" extends Export {}\n"));
             b.imports.forEach(i -> sb.append("one sig ").append(i.atom()).append(" extends ")
                     .append(i.optional() ? "OptionalImport" : "MandatoryImport").append(" {}\n"));
+            b.requires.forEach(q -> sb.append("one sig ").append(q.atom()).append(" extends ")
+                    .append(q.optional() ? "OptionalRequire" : "MandatoryRequire").append(" {}\n"));
         }
 
         sb.append("\nfact {\n");
@@ -50,6 +52,11 @@ class AlloyModelWriter {
                     .append('\n');
             sb.append('\t').append(set(b.atom + ".imports", b.imports.stream().map(ImportSpec::atom).toList()))
                     .append('\n');
+            sb.append('\t').append(set(b.atom + ".requires", b.requires.stream().map(RequireSpec::atom).toList()))
+                    .append('\n');
+            for (RequireSpec q : b.requires) {
+                sb.append('\t').append(set(q.atom() + ".matches", matches(world, q))).append('\n');
+            }
             for (ExportSpec e : b.exports) {
                 sb.append('\t').append(e.atom()).append(".pkg = ").append(AlloyWorld.pkg(e.pkg())).append('\n');
                 sb.append('\t').append(set(e.atom() + ".uses", e.uses().stream().map(AlloyWorld::pkg).toList()))
@@ -60,6 +67,10 @@ class AlloyModelWriter {
                 sb.append('\t').append(set(i.atom() + ".matches", matches(world, i))).append('\n');
             }
         }
+        List<String> reexported = world.bundles.stream().flatMap(b -> b.requires.stream())
+                .filter(RequireSpec::reexport).map(RequireSpec::atom).toList();
+        sb.append('\t').append(reexported.isEmpty() ? "no Reexported" : "Reexported = " + String.join(" + ", reexported))
+                .append('\n');
         sb.append("}\n\n");
 
         String m = world.mandatory.isEmpty() ? "none"
@@ -84,6 +95,13 @@ class AlloyModelWriter {
             }
         }
         return matches;
+    }
+
+    // the bundles that satisfy name and version range of a requirement
+    private static List<String> matches(AlloyWorld world, RequireSpec q) {
+        return world.bundles.stream()
+                .filter(b -> b.name.equals(q.name()) && (q.range() == null || q.range().includes(b.version)))
+                .map(b -> b.atom).toList();
     }
 
     private static String set(String lhs, List<String> atoms) {

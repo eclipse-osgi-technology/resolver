@@ -177,7 +177,7 @@ public class ResolveSteps {
      */
     @Then("the resolution fails because {bundle} has an unsatisfied requirement of bundle {string}")
     public void unsatisfiedRequireBundle(BundleRef ref, String bundle) {
-        world.unsupported("Require-Bundle");
+        world.outcome = Outcome.FAILS;
     }
 
     /**
@@ -295,8 +295,12 @@ public class ResolveSteps {
     private String wiredFormula(BundleRef from, BundleRef to) {
         String f = world.find(from).atom;
         String t = world.find(to).atom;
-        return "some i : " + f + ".imports | some i.(r.wire) and i.(r.wire) in " + t + ".exports and " + f + " != "
-                + t;
+        return "(some i : " + f + ".imports | some i.(r.wire) and i.(r.wire) in " + t + ".exports and " + f + " != "
+                + t + ") or (" + requireWiredFormula(from, to) + ")";
+    }
+
+    private String requireWiredFormula(BundleRef from, BundleRef to) {
+        return world.find(to).atom + " in " + world.find(from).atom + ".requires.(r.rwire)";
     }
 
     /**
@@ -308,7 +312,10 @@ public class ResolveSteps {
      */
     @Then("{bundle} is wired to {bundle} for capability in namespace {string}")
     public void wiredForCapability(BundleRef from, BundleRef to, String namespace) {
-        world.unsupported("generic capabilities");
+        if (!"osgi.wiring.bundle".equals(namespace)) {
+            world.unsupported("generic capabilities");
+        }
+        world.assertThat(from + " is wired to " + to + " for namespace " + namespace, requireWiredFormula(from, to));
     }
 
     /**
@@ -321,7 +328,8 @@ public class ResolveSteps {
     public void hasWires(BundleRef ref, int count) {
         String b = world.find(ref).atom;
         world.assertThat(ref + " has " + count + " wires",
-                "#{ i : " + b + ".imports | some e : i.(r.wire) | e not in " + b + ".exports } = " + count);
+                "plus[#{ i : " + b + ".imports | some e : i.(r.wire) | e not in " + b + ".exports }, #{ q : " + b
+                        + ".requires | some q.(r.rwire) }] = " + count);
     }
 
     /**

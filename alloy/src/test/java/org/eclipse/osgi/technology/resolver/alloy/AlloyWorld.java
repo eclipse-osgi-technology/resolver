@@ -62,6 +62,11 @@ public class AlloyWorld {
                 range == null ? null : VersionRange.valueOf(range), optional));
     }
 
+    void requireBundle(String name, String range, boolean optional, boolean reexport) {
+        current.requires.add(new RequireSpec("q" + counter++ + "_" + id(name), name,
+                range == null ? null : VersionRange.valueOf(range), optional, reexport));
+    }
+
     /**
      * Finds the bundle a reference names.
      *

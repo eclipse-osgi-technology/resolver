@@ -244,7 +244,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string}")
     public void itRequiresBundle(String bundle) {
-        world.unsupported("Require-Bundle");
+        world.requireBundle(bundle, null, false, false);
     }
 
     /**
@@ -255,7 +255,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string} in version range {string}")
     public void itRequiresBundleInVersionRange(String bundle, String range) {
-        world.unsupported("Require-Bundle");
+        world.requireBundle(bundle, range, false, false);
     }
 
     /**
@@ -265,7 +265,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string} with multiple cardinality")
     public void itRequiresBundleWithMultipleCardinality(String bundle) {
-        world.unsupported("Require-Bundle");
+        world.unsupported("Require-Bundle with multiple cardinality");
     }
 
     /**
@@ -275,7 +275,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string} and reexports it")
     public void itRequiresBundleAndReexportsIt(String bundle) {
-        world.unsupported("Require-Bundle");
+        world.requireBundle(bundle, null, false, true);
     }
 
     /**
@@ -285,7 +285,7 @@ public class BundleSteps {
      */
     @Given("it optionally requires bundle {string} and reexports it")
     public void itOptionallyRequiresBundleAndReexportsIt(String bundle) {
-        world.unsupported("Require-Bundle");
+        world.requireBundle(bundle, null, true, true);
     }
 
     /**
@@ -295,7 +295,7 @@ public class BundleSteps {
      */
     @Given("it optionally requires bundle {string}")
     public void itOptionallyRequiresBundle(String bundle) {
-        world.unsupported("Require-Bundle");
+        world.requireBundle(bundle, null, true, false);
     }
 
     /**

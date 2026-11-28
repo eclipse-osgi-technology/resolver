@@ -24,6 +24,7 @@ class BundleSpec {
     final String atom;
     final List<ExportSpec> exports = new ArrayList<>();
     final List<ImportSpec> imports = new ArrayList<>();
+    final List<RequireSpec> requires = new ArrayList<>();
 
     BundleSpec(String name, Version version, String atom) {
         this.name = name;
