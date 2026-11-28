@@ -43,6 +43,23 @@ mvn -pl alloy -am verify -Dtest=RunCucumberTest -Dsurefire.failIfNoSpecifiedTest
 
 The dumped files can be opened in the Alloy GUI (`java -jar org.alloytools.alloy.dist-6.2.0.jar`) to browse instances, for example after changing a `run` command to look at a solution.
 
+## Versions and exploration
+
+Besides the resolver rules (`resolver.als`, `module_layer.als`) there are model files for versions:
+
+- `versions.als` has versions (major, minor, micro, no qualifier) and version ranges.
+- `semantic_versions.als` has the consumer and provider ranges of the OSGi semantic versioning white paper.
+- `matching.als` derives the candidates of a requirement from names and versions, instead of taking them from the resolve context.
+
+The files in `src/test/resources/explore` are not generated from scenarios.
+They have free bundles, versions and ranges, and `run`/`check` commands with an `expect` clause (0: no instance or counterexample, 1: there is one).
+`ExploreTest` runs all of them and fails if a result differs from its `expect`.
+A `check` with `expect 1` documents a finding, the comment above the command says which.
+
+```
+mvn -pl alloy -am verify -Dtest=ExploreTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
 ## How to extend
 
 - New rules go into the fitting model file and get the next rule number in a comment.

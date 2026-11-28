@@ -38,7 +38,8 @@ class AlloyRunner {
     /** The system property with the directory the models are dumped to. */
     static final String DUMP_PROPERTY = "alloy.dump";
 
-    private static final List<String> MODEL_FILES = List.of("resolver.als", "module_layer.als");
+    private static final List<String> MODEL_FILES = List.of("resolver.als", "module_layer.als", "versions.als",
+            "semantic_versions.als", "matching.als");
 
     private static final String VIRTUAL_DIR = "/alloy-model/";
 
@@ -78,20 +79,41 @@ class AlloyRunner {
     }
 
     /**
-     * @param command the label of the {@code run} command
-     * @return whether the command has an instance
+     * @param command the label of the command
+     * @return whether the command has an instance (a counterexample for a {@code check})
      */
     boolean satisfiable(String command) {
         for (Command c : module.getAllCommands()) {
             if (c.label.equals(command)) {
-                try {
-                    return TranslateAlloyToKodkod.execute_command(A4Reporter.NOP, module.getAllReachableSigs(), c,
-                            new A4Options()).satisfiable();
-                } catch (Exception e) {
-                    throw new IllegalStateException("Alloy failed on " + command + ": " + e.getMessage(), e);
-                }
+                return satisfiable(c);
             }
         }
         throw new IllegalArgumentException("No command " + command);
+    }
+
+    boolean satisfiable(Command command) {
+        try {
+            return TranslateAlloyToKodkod.execute_command(A4Reporter.NOP, module.getAllReachableSigs(), command,
+                    new A4Options()).satisfiable();
+        } catch (Exception e) {
+            throw new IllegalStateException("Alloy failed on " + command.label + ": " + e.getMessage(), e);
+        }
+    }
+
+    /** @return the commands of the root file */
+    List<Command> commands() {
+        return module.getAllCommands();
+    }
+
+    /**
+     * @param file the name of a file in {@code explore} without the extension
+     * @return the runner for the commands of the file
+     */
+    static AlloyRunner explore(String file) {
+        try {
+            return new AlloyRunner(file, read("explore/" + file + ".als"));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

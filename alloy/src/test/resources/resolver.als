@@ -67,6 +67,15 @@ sig Multiple in Requirement {}
 // requirements with visibility:=reexport, a subset because it is orthogonal to optional
 sig Reexported in Require {}
 
+// an export, import or requirement belongs to one bundle
+fact oneOwner {
+    all e : Export | lone exports.e
+    all i : Import | lone imports.i
+    all q : Require | lone requires.q
+    all q : Requirement | lone needs.q
+    all c : Capability | lone provides.c
+}
+
 // the exporting bundle of an export
 fun owner[e : Export] : Bundle { exports.e }
 
@@ -108,3 +117,8 @@ sig Resolution {
 }
 
 pred mandatoryResolved[r : Resolution, m : set Bundle] { m in r.resolved }
+
+// a bundle that is valid by the specification does not import the same package twice
+pred wellFormed {
+    all b : Bundle, disj i, j : b.imports | i.pkg != j.pkg
+}
