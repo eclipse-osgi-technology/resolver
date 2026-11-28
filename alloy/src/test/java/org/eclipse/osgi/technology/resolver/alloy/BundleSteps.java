@@ -11,6 +11,7 @@ package org.eclipse.osgi.technology.resolver.alloy;
 
 import org.eclipse.osgi.technology.resolver.testsuite.BundleRef;
 
+import aQute.bnd.header.Attrs;
 import io.cucumber.java.en.Given;
 
 /**
@@ -47,7 +48,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string}")
     public void itExportsPackage(String pkg) {
-        world.export(pkg, null, null);
+        world.export(pkg, new Attrs());
     }
 
     /**
@@ -58,7 +59,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string} in version {string}")
     public void itExportsPackageInVersion(String pkg, String version) {
-        world.export(pkg, version, null);
+        world.export(pkg, new Attrs().with("version", version));
     }
 
     /**
@@ -69,7 +70,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string} using {string}")
     public void itExportsPackageUsing(String pkg, String uses) {
-        world.export(pkg, null, uses);
+        world.export(pkg, new Attrs().with("uses:", uses));
     }
 
     /**
@@ -81,7 +82,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string} in version {string} using {string}")
     public void itExportsPackageInVersionUsing(String pkg, String version, String uses) {
-        world.export(pkg, version, uses);
+        world.export(pkg, new Attrs().with("version", version).with("uses:", uses));
     }
 
     /**
@@ -91,7 +92,7 @@ public class BundleSteps {
      */
     @Given("it imports package {string}")
     public void itImportsPackage(String pkg) {
-        world.importPackage(pkg, null, false);
+        world.importPackage(pkg, new Attrs());
     }
 
     /**
@@ -101,7 +102,7 @@ public class BundleSteps {
      */
     @Given("it optionally imports package {string}")
     public void itOptionallyImportsPackage(String pkg) {
-        world.importPackage(pkg, null, true);
+        world.importPackage(pkg, new Attrs().with("resolution:", "optional"));
     }
 
     /**
@@ -112,7 +113,7 @@ public class BundleSteps {
      */
     @Given("it imports package {string} in version range {string}")
     public void itImportsPackageInVersionRange(String pkg, String range) {
-        world.importPackage(pkg, range, false);
+        world.importPackage(pkg, new Attrs().with("version", range));
     }
 
     /**
@@ -123,7 +124,7 @@ public class BundleSteps {
      */
     @Given("it optionally imports package {string} in version range {string}")
     public void itOptionallyImportsPackageInVersionRange(String pkg, String range) {
-        world.importPackage(pkg, range, true);
+        world.importPackage(pkg, new Attrs().with("version", range).with("resolution:", "optional"));
     }
 
     /**
@@ -168,7 +169,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string} with {string}")
     public void itExportsPackageWith(String pkg, String attributes) {
-        world.unsupported("export attributes and directives");
+        world.export(pkg, AlloyWorld.attrs(attributes));
     }
 
     /**
@@ -180,7 +181,7 @@ public class BundleSteps {
      */
     @Given("it exports package {string} in version {string} with {string}")
     public void itExportsPackageInVersionWith(String pkg, String version, String attributes) {
-        world.unsupported("export attributes and directives");
+        world.export(pkg, AlloyWorld.attrs(attributes).with("version", version));
     }
 
     /**
@@ -191,7 +192,7 @@ public class BundleSteps {
      */
     @Given("it imports package {string} with {string}")
     public void itImportsPackageWith(String pkg, String attributes) {
-        world.unsupported("import attributes and directives");
+        world.importPackage(pkg, AlloyWorld.attrs(attributes));
     }
 
     /**
@@ -212,7 +213,7 @@ public class BundleSteps {
      */
     @Given("it imports package {string} from bundle {string}")
     public void itImportsPackageFromBundle(String pkg, String bundle) {
-        world.unsupported("import from a specific bundle");
+        world.importPackage(pkg, new Attrs().with("bundle-symbolic-name", bundle));
     }
 
     /**
@@ -224,7 +225,8 @@ public class BundleSteps {
      */
     @Given("it imports package {string} from bundle {string} in bundle version range {string}")
     public void itImportsPackageFromBundleInBundleVersionRange(String pkg, String bundle, String range) {
-        world.unsupported("import from a specific bundle");
+        world.importPackage(pkg,
+                new Attrs().with("bundle-symbolic-name", bundle).with("bundle-version", range));
     }
 
     /**
@@ -244,7 +246,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string}")
     public void itRequiresBundle(String bundle) {
-        world.requireBundle(bundle, null, false, false);
+        world.requireBundle(bundle, new Attrs());
     }
 
     /**
@@ -255,7 +257,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string} in version range {string}")
     public void itRequiresBundleInVersionRange(String bundle, String range) {
-        world.requireBundle(bundle, range, false, false);
+        world.requireBundle(bundle, new Attrs().with("bundle-version", range));
     }
 
     /**
@@ -275,7 +277,7 @@ public class BundleSteps {
      */
     @Given("it requires bundle {string} and reexports it")
     public void itRequiresBundleAndReexportsIt(String bundle) {
-        world.requireBundle(bundle, null, false, true);
+        world.requireBundle(bundle, new Attrs().with("visibility:", "reexport"));
     }
 
     /**
@@ -285,7 +287,7 @@ public class BundleSteps {
      */
     @Given("it optionally requires bundle {string} and reexports it")
     public void itOptionallyRequiresBundleAndReexportsIt(String bundle) {
-        world.requireBundle(bundle, null, true, true);
+        world.requireBundle(bundle, new Attrs().with("visibility:", "reexport").with("resolution:", "optional"));
     }
 
     /**
@@ -295,7 +297,7 @@ public class BundleSteps {
      */
     @Given("it optionally requires bundle {string}")
     public void itOptionallyRequiresBundle(String bundle) {
-        world.requireBundle(bundle, null, true, false);
+        world.requireBundle(bundle, new Attrs().with("resolution:", "optional"));
     }
 
     /**

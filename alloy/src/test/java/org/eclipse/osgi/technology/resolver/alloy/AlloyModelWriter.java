@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.osgi.resource.Capability;
+
 /**
  * Writes the scenario of an {@link AlloyWorld} as an Alloy module that opens
  * {@code resolver.als} and {@code module_layer.als}.
@@ -23,6 +25,7 @@ class AlloyModelWriter {
             + " 0 MandatoryImport, 0 OptionalImport, 0 Require, 0 MandatoryRequire, 0 OptionalRequire\n";
 
     static String write(AlloyWorld world, String title) {
+        Matching matching = new Matching(world);
         StringBuilder sb = new StringBuilder();
         sb.append("// Generated for: ").append(title).append("\n");
         world.descriptions.forEach(d -> sb.append("//   ").append(d).append('\n'));
@@ -34,13 +37,13 @@ class AlloyModelWriter {
                 pkgs.add(e.pkg());
                 pkgs.addAll(e.uses());
             }
-            b.imports.forEach(i -> pkgs.add(i.pkg()));
+            imports(matching, b).forEach(i -> pkgs.add(i.pkg()));
         }
         pkgs.stream().distinct().forEach(p -> sb.append("one sig ").append(AlloyWorld.pkg(p)).append(" extends Pkg {}\n"));
         for (BundleSpec b : world.bundles) {
             sb.append("one sig ").append(b.atom).append(" extends Bundle {}\n");
             b.exports.forEach(e -> sb.append("one sig ").append(e.atom()).append(" extends Export {}\n"));
-            b.imports.forEach(i -> sb.append("one sig ").append(i.atom()).append(" extends ")
+            imports(matching, b).forEach(i -> sb.append("one sig ").append(i.atom()).append(" extends ")
                     .append(i.optional() ? "OptionalImport" : "MandatoryImport").append(" {}\n"));
             b.requires.forEach(q -> sb.append("one sig ").append(q.atom()).append(" extends ")
                     .append(q.optional() ? "OptionalRequire" : "MandatoryRequire").append(" {}\n"));
@@ -50,21 +53,21 @@ class AlloyModelWriter {
         for (BundleSpec b : world.bundles) {
             sb.append("    ").append(set(b.atom + ".exports", b.exports.stream().map(ExportSpec::atom).toList()))
                     .append('\n');
-            sb.append("    ").append(set(b.atom + ".imports", b.imports.stream().map(ImportSpec::atom).toList()))
+            sb.append("    ").append(set(b.atom + ".imports", imports(matching, b).stream().map(ImportSpec::atom).toList()))
                     .append('\n');
             sb.append("    ").append(set(b.atom + ".requires", b.requires.stream().map(RequireSpec::atom).toList()))
                     .append('\n');
             for (RequireSpec q : b.requires) {
-                sb.append("    ").append(set(q.atom() + ".matches", matches(world, q))).append('\n');
+                sb.append("    ").append(set(q.atom() + ".matches", matches(matching, q))).append('\n');
             }
             for (ExportSpec e : b.exports) {
                 sb.append("    ").append(e.atom()).append(".pkg = ").append(AlloyWorld.pkg(e.pkg())).append('\n');
                 sb.append("    ").append(set(e.atom() + ".uses", e.uses().stream().map(AlloyWorld::pkg).toList()))
                         .append('\n');
             }
-            for (ImportSpec i : b.imports) {
+            for (ImportSpec i : imports(matching, b)) {
                 sb.append("    ").append(i.atom()).append(".pkg = ").append(AlloyWorld.pkg(i.pkg())).append('\n');
-                sb.append("    ").append(set(i.atom() + ".matches", matches(world, i))).append('\n');
+                sb.append("    ").append(set(i.atom() + ".matches", matches(matching, i))).append('\n');
             }
         }
         List<String> reexported = world.bundles.stream().flatMap(b -> b.requires.stream())
@@ -84,24 +87,27 @@ class AlloyModelWriter {
         return sb.toString();
     }
 
-    // the exports that satisfy name and version range of an import
-    private static List<String> matches(AlloyWorld world, ImportSpec i) {
+    // imports that are not effective at resolve time are ignored by a resolver
+    private static List<ImportSpec> imports(Matching m, BundleSpec b) {
+        return b.imports.stream().filter(m::effective).toList();
+    }
+
+    // the exports of a package requirement, found like a resolver asks its resolve context
+    private static List<String> matches(Matching m, ImportSpec i) {
         List<String> matches = new ArrayList<>();
-        for (BundleSpec b : world.bundles) {
-            for (ExportSpec e : b.exports) {
-                if (e.pkg().equals(i.pkg()) && (i.range() == null || i.range().includes(e.version()))) {
-                    matches.add(e.atom());
-                }
-            }
+        for (Capability c : m.context.findProviders(m.requirement(i))) {
+            matches.add(m.exports.get(c));
         }
         return matches;
     }
 
-    // the bundles that satisfy name and version range of a requirement
-    private static List<String> matches(AlloyWorld world, RequireSpec q) {
-        return world.bundles.stream()
-                .filter(b -> b.name.equals(q.name()) && (q.range() == null || q.range().includes(b.version)))
-                .map(b -> b.atom).toList();
+    // the bundles that provide a bundle requirement
+    private static List<String> matches(Matching m, RequireSpec q) {
+        List<String> matches = new ArrayList<>();
+        for (Capability c : m.context.findProviders(m.requirement(q))) {
+            matches.add(m.bundles.get(c.getResource()));
+        }
+        return matches;
     }
 
     private static String set(String lhs, List<String> atoms) {

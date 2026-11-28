@@ -9,15 +9,12 @@
  *******************************************************************************/
 package org.eclipse.osgi.technology.resolver.alloy;
 
-import org.osgi.framework.VersionRange;
-
 /**
  * An imported package of a scenario bundle.
  *
  * @param atom     the name of the atom in the Alloy model
  * @param pkg      the package name
- * @param range    the version range, {@code null} matches every version
  * @param optional {@code true} if the import is optional
  */
-record ImportSpec(String atom, String pkg, VersionRange range, boolean optional) {
+record ImportSpec(String atom, String pkg, boolean optional) {
 }

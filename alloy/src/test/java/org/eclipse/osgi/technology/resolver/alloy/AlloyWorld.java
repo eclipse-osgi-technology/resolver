@@ -14,9 +14,12 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.osgi.technology.resolver.testsuite.BundleBuilder;
 import org.eclipse.osgi.technology.resolver.testsuite.BundleRef;
 import org.osgi.framework.Version;
-import org.osgi.framework.VersionRange;
+
+import aQute.bnd.header.Attrs;
+import aQute.bnd.header.Parameters;
 
 /**
  * The state of one scenario. The steps only record what the scenario
@@ -45,26 +48,40 @@ public class AlloyWorld {
     }
 
     void startBundle(BundleRef ref) {
-        BundleSpec b = new BundleSpec(ref.name(), ref.version() == null ? Version.emptyVersion : ref.version(),
-                "b" + bundles.size() + "_" + id(ref.name()));
+        BundleBuilder builder = BundleBuilder.bundle(ref, new Attrs());
+        BundleSpec b = new BundleSpec(ref.name(), ref.version() == null ? Version.emptyVersion : ref.version(), builder, "b" + bundles.size() + "_" + id(ref.name()));
         bundles.add(b);
         current = b;
     }
 
-    void export(String pkg, String version, String uses) {
+    void export(String pkg, Attrs attrs) {
+        String uses = attrs.get("uses:");
         List<String> used = uses == null ? List.of() : List.of(uses.split("\\s*,\\s*"));
-        current.exports.add(new ExportSpec("e" + counter++ + "_" + id(pkg), pkg,
-                version == null ? Version.emptyVersion : Version.parseVersion(version), used));
+        current.builder.addExportPackage(pkg, attrs);
+        current.exports.add(new ExportSpec("e" + counter++ + "_" + id(pkg), pkg, used));
     }
 
-    void importPackage(String pkg, String range, boolean optional) {
-        current.imports.add(new ImportSpec("i" + counter++ + "_" + id(pkg), pkg,
-                range == null ? null : VersionRange.valueOf(range), optional));
+    void importPackage(String pkg, Attrs attrs) {
+        current.builder.addImportPackage(pkg, attrs);
+        current.imports.add(new ImportSpec("i" + counter++ + "_" + id(pkg), pkg, optional(attrs)));
     }
 
-    void requireBundle(String name, String range, boolean optional, boolean reexport) {
-        current.requires.add(new RequireSpec("q" + counter++ + "_" + id(name), name,
-                range == null ? null : VersionRange.valueOf(range), optional, reexport));
+    void requireBundle(String name, Attrs attrs) {
+        current.builder.addRequireBundle(name, attrs);
+        current.requires.add(new RequireSpec("q" + counter++ + "_" + id(name), name, optional(attrs),
+                "reexport".equals(attrs.get("visibility:"))));
+    }
+
+    private static boolean optional(Attrs attrs) {
+        return "optional".equals(attrs.get("resolution:"));
+    }
+
+    /**
+     * Parses the attributes and directives of a manifest clause, e.g.
+     * {@code a=b;c:=d}.
+     */
+    static Attrs attrs(String clauseAttributes) {
+        return new Parameters("x;" + clauseAttributes).get("x");
     }
 
     /**

@@ -11,15 +11,13 @@ package org.eclipse.osgi.technology.resolver.alloy;
 
 import java.util.List;
 
-import org.osgi.framework.Version;
 
 /**
  * An exported package of a scenario bundle.
  *
  * @param atom    the name of the atom in the Alloy model
  * @param pkg     the package name
- * @param version the version of the package
  * @param uses    the packages of the {@code uses} directive
  */
-record ExportSpec(String atom, String pkg, Version version, List<String> uses) {
+record ExportSpec(String atom, String pkg, List<String> uses) {
 }

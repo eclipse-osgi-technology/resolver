@@ -14,21 +14,27 @@ import java.util.List;
 
 import org.osgi.framework.Version;
 
+import org.eclipse.osgi.technology.resolver.testsuite.BundleBuilder;
+
 /**
- * A bundle of a scenario as it is written to the Alloy model.
+ * A bundle of a scenario as it is written to the Alloy model. The
+ * {@link BundleBuilder} describes the same bundle as a resource, the
+ * requirements are matched against the capabilities with it.
  */
 class BundleSpec {
 
     final String name;
     final Version version;
+    final BundleBuilder builder;
     final String atom;
     final List<ExportSpec> exports = new ArrayList<>();
     final List<ImportSpec> imports = new ArrayList<>();
     final List<RequireSpec> requires = new ArrayList<>();
 
-    BundleSpec(String name, Version version, String atom) {
+    BundleSpec(String name, Version version, BundleBuilder builder, String atom) {
         this.name = name;
         this.version = version;
+        this.builder = builder;
         this.atom = atom;
     }
 }

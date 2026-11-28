@@ -19,7 +19,8 @@ The language reference is at <https://alloytools.org/documentation.html>.
 The module is a Cucumber binding like [felix-resolver](../felix-resolver), but the "resolver" is the Alloy model in `src/test/resources` (`resolver.als` and `module_layer.als`).
 It uses the feature files of the test-suite and its own steps in `org.eclipse.osgi.technology.resolver.alloy`.
 
-- Steps that describe bundles record them in `AlloyWorld`.
+- Steps that describe bundles record them in `AlloyWorld` and build the resources with the `BundleBuilder` of the test-suite.
+- Which capabilities satisfy a requirement (version ranges, attributes, filters) is not part of the model: like a resolver, the model gets the candidates from `DefaultResolveContext.findProviders` and only decides which of them are wired.
 - `I resolve ...` records the mandatory bundles, `Then` steps only record the expected outcome and assertions as Alloy formulas.
 - An `@After` hook (`ResolveSteps.solve`) builds the model of the scenario and solves it with Alloy:
   a successful scenario needs a valid resolution that satisfies all assertions, a failing one must have none (a uses failure also needs one without the uses constraint).
