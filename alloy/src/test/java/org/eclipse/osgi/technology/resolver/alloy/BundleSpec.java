@@ -30,6 +30,8 @@ class BundleSpec {
     final List<ExportSpec> exports = new ArrayList<>();
     final List<ImportSpec> imports = new ArrayList<>();
     final List<RequireSpec> requires = new ArrayList<>();
+    final List<CapabilitySpec> provides = new ArrayList<>();
+    final List<NeedSpec> needs = new ArrayList<>();
 
     BundleSpec(String name, Version version, BundleBuilder builder, String atom) {
         this.name = name;

@@ -22,7 +22,9 @@ abstract sig Pkg {}
 abstract sig Bundle {
     exports  : set Export,
     imports  : set Import,
-    requires : set Require
+    requires : set Require,
+    provides : set Capability, // capabilities of namespaces that have no dedicated rules, e.g. osgi.contract or custom ones
+    needs    : set Requirement
 }
 
 abstract sig Export {
@@ -45,6 +47,23 @@ abstract sig Require {
 abstract sig OptionalRequire extends Require {}
 abstract sig MandatoryRequire extends Require {}
 
+abstract sig Namespace {}
+
+abstract sig Capability {
+    uses : set Pkg
+}
+
+abstract sig Requirement {
+    ns      : one Namespace,
+    matches : set Capability // capabilities of the namespace that satisfy the filter, precomputed by the generator
+}
+
+abstract sig OptionalRequirement extends Requirement {}
+abstract sig MandatoryRequirement extends Requirement {}
+
+// requirements with cardinality:=multiple, they are wired to every available provider
+sig Multiple in Requirement {}
+
 // requirements with visibility:=reexport, a subset because it is orthogonal to optional
 sig Reexported in Require {}
 
@@ -62,6 +81,7 @@ sig Resolution {
     resolved    : set Bundle,
     wire        : Import -> lone Export,
     rwire       : Require -> lone Bundle,
+    gwire       : Requirement -> set Capability,
     substituted : set Export // defined by module_layer.als
 } {
     // R1 only resolved bundles have wires
@@ -76,6 +96,15 @@ sig Resolution {
     all q : Require, b : q.rwire | b in q.matches and b in resolved
     // R8 a mandatory requirement of a resolved bundle needs a wire
     all b : resolved, q : b.requires | q in MandatoryRequire implies some q.rwire
+    // R12 only resolved bundles have wires for generic requirements
+    gwire.Capability in resolved.needs
+    // R13 a generic requirement is wired to matching capabilities of resolved bundles
+    all q : Requirement, c : q.gwire | c in q.matches and c in resolved.provides
+    // R14 a mandatory generic requirement of a resolved bundle needs a wire
+    all b : resolved, q : b.needs | q in MandatoryRequirement implies some q.gwire
+    // R15 a requirement is wired to one capability, with multiple cardinality to every available one
+    all q : Requirement - Multiple | lone q.gwire
+    all q : (resolved.needs & Multiple) | q.gwire = q.matches & resolved.provides
 }
 
 pred mandatoryResolved[r : Resolution, m : set Bundle] { m in r.resolved }

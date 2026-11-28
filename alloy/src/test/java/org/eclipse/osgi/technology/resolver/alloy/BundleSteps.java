@@ -308,7 +308,7 @@ public class BundleSteps {
      */
     @Given("it provides capability {string} with {string}")
     public void itProvidesCapabilityWith(String namespace, String attributes) {
-        world.unsupported("generic capabilities");
+        world.provideCapability(namespace, AlloyWorld.attrs(attributes));
     }
 
     /**
@@ -318,7 +318,7 @@ public class BundleSteps {
      */
     @Given("it provides capability {string}")
     public void itProvidesCapability(String namespace) {
-        world.unsupported("generic capabilities");
+        world.provideCapability(namespace, new Attrs());
     }
 
     /**
@@ -328,7 +328,7 @@ public class BundleSteps {
      */
     @Given("it requires capability {string}")
     public void itRequiresCapability(String namespace) {
-        world.unsupported("generic capabilities");
+        world.requireCapability(namespace, null, new Attrs());
     }
 
     /**
@@ -339,7 +339,7 @@ public class BundleSteps {
      */
     @Given("it requires capability {string} with {string}")
     public void itRequiresCapabilityWith(String namespace, String attributes) {
-        world.unsupported("generic capabilities");
+        world.requireCapability(namespace, null, AlloyWorld.attrs(attributes));
     }
 
     /**
@@ -350,7 +350,7 @@ public class BundleSteps {
      */
     @Given("it requires capability {string} with filter {string}")
     public void itRequiresCapabilityWithFilter(String namespace, String filter) {
-        world.unsupported("generic capabilities");
+        world.requireCapability(namespace, filter, new Attrs());
     }
 
     /**
@@ -362,7 +362,7 @@ public class BundleSteps {
      */
     @Given("it requires capability {string} with filter {string} and {string}")
     public void itRequiresCapabilityWithFilterAnd(String namespace, String filter, String directives) {
-        world.unsupported("generic capabilities");
+        world.requireCapability(namespace, filter, AlloyWorld.attrs(directives));
     }
 
     /**
@@ -373,6 +373,6 @@ public class BundleSteps {
      */
     @Given("it optionally requires capability {string} with filter {string}")
     public void itOptionallyRequiresCapabilityWithFilter(String namespace, String filter) {
-        world.unsupported("generic capabilities");
+        world.requireCapability(namespace, filter, new Attrs().with("resolution:", "optional"));
     }
 }

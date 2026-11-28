@@ -12,7 +12,9 @@ package org.eclipse.osgi.technology.resolver.alloy;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.osgi.technology.resolver.testsuite.BundleBuilder;
 import org.eclipse.osgi.technology.resolver.testsuite.BundleRef;
@@ -72,6 +74,31 @@ public class AlloyWorld {
                 "reexport".equals(attrs.get("visibility:"))));
     }
 
+    void provideCapability(String ns, Attrs attrs) {
+        String uses = attrs.get("uses:");
+        current.builder.addProvideCapability(ns, attrs);
+        current.provides.add(new CapabilitySpec("c" + counter++ + "_" + id(ns), ns,
+                uses == null ? List.of() : List.of(uses.split("\\s*,\\s*"))));
+    }
+
+    /**
+     * @param filter     the filter, {@code null} matches every capability of the namespace
+     * @param directives the directives of the requirement
+     */
+    void requireCapability(String ns, String filter, Attrs directives) {
+        if (filter == null) {
+            Map<String, String> map = new HashMap<>();
+            directives.forEach((k, v) -> map.put(k.endsWith(":") ? k.substring(0, k.length() - 1) : k, v));
+            current.builder.addRequireAnyCapability(ns, map);
+        } else {
+            Attrs attrs = new Attrs(directives);
+            attrs.put("filter:", filter);
+            current.builder.addRequireCapability(ns, ns, attrs);
+        }
+        current.needs.add(new NeedSpec("n" + counter++ + "_" + id(ns), ns, optional(directives),
+                "multiple".equals(directives.get("cardinality:"))));
+    }
+
     private static boolean optional(Attrs attrs) {
         return "optional".equals(attrs.get("resolution:"));
     }
@@ -97,6 +124,11 @@ public class AlloyWorld {
             unsupported(ref + " is not unique");
         }
         return found.get(0);
+    }
+
+    /** The name of the atom of a namespace. */
+    static String ns(String name) {
+        return "ns_" + id(name);
     }
 
     /** The name of the atom of a package. */

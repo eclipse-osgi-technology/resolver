@@ -188,7 +188,7 @@ public class ResolveSteps {
      */
     @Then("the resolution fails because {bundle} has an unsatisfied requirement for capability in namespace {string}")
     public void unsatisfiedCapability(BundleRef ref, String namespace) {
-        world.unsupported("generic capabilities");
+        world.outcome = Outcome.FAILS;
     }
 
     /**
@@ -296,7 +296,8 @@ public class ResolveSteps {
         String f = world.find(from).atom;
         String t = world.find(to).atom;
         return "(some i : " + f + ".imports | some i.(r.wire) and i.(r.wire) in " + t + ".exports and " + f + " != "
-                + t + ") or (" + requireWiredFormula(from, to) + ")";
+                + t + ") or (" + requireWiredFormula(from, to) + ") or (some q : " + f
+                + ".needs | some q.(r.gwire) & " + t + ".provides)";
     }
 
     private String requireWiredFormula(BundleRef from, BundleRef to) {
@@ -312,10 +313,10 @@ public class ResolveSteps {
      */
     @Then("{bundle} is wired to {bundle} for capability in namespace {string}")
     public void wiredForCapability(BundleRef from, BundleRef to, String namespace) {
-        if (!"osgi.wiring.bundle".equals(namespace)) {
-            world.unsupported("generic capabilities");
-        }
-        world.assertThat(from + " is wired to " + to + " for namespace " + namespace, requireWiredFormula(from, to));
+        String formula = "osgi.wiring.bundle".equals(namespace) ? requireWiredFormula(from, to)
+                : "some q : " + world.find(from).atom + ".needs | q.ns = " + AlloyWorld.ns(namespace)
+                        + " and some q.(r.gwire) & " + world.find(to).atom + ".provides";
+        world.assertThat(from + " is wired to " + to + " for namespace " + namespace, formula);
     }
 
     /**
@@ -328,8 +329,9 @@ public class ResolveSteps {
     public void hasWires(BundleRef ref, int count) {
         String b = world.find(ref).atom;
         world.assertThat(ref + " has " + count + " wires",
-                "plus[#{ i : " + b + ".imports | some e : i.(r.wire) | e not in " + b + ".exports }, #{ q : " + b
-                        + ".requires | some q.(r.rwire) }] = " + count);
+                "plus[plus[#{ i : " + b + ".imports | some e : i.(r.wire) | e not in " + b
+                        + ".exports }, #{ q : " + b + ".requires | some q.(r.rwire) }], #{ q : " + b
+                        + ".needs, c : Capability | c in q.(r.gwire) }] = " + count);
     }
 
     /**

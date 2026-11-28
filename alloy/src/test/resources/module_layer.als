@@ -56,13 +56,26 @@ fun implied[r : Resolution] : Export -> Export {
     { s, x : Export | some p : s.uses | x in view[r, owner[s]][p] }
 }
 
+// the exports a wired capability implies through its uses, as the bundle that provides it sees them
+fun capImplied[r : Resolution, b : Bundle] : set Export {
+    { x : Export | some c : b.needs.(r.gwire), p : c.uses | x in view[r, provider[c]][p] }
+}
+
+fun provider[c : Capability] : Bundle { provides.c }
+
+// R16 uses of generic capabilities: a consumer sees the used packages from the same provider as the bundle of the capability
+pred capUsesConsistent[r : Resolution] {
+    all b : r.resolved, x : capImplied[r, b] + capImplied[r, b].^(implied[r]) |
+        (some view[r, b][x.pkg]) implies x in view[r, b][x.pkg]
+}
+
 // R5 a bundle sees every used package from the provider that the exporter sees, a package split over required bundles has several
 pred usesConsistent[r : Resolution] {
     all b : r.resolved, s : view[r, b][Pkg], x : s.^(implied[r]) |
         (some view[r, b][x.pkg]) implies x in view[r, b][x.pkg]
 }
 
-pred valid[r : Resolution, m : set Bundle] { mandatoryResolved[r, m] and usesConsistent[r] }
+pred valid[r : Resolution, m : set Bundle] { mandatoryResolved[r, m] and usesConsistent[r] and capUsesConsistent[r] }
 
 // same without the uses constraint, used to tell a uses failure from a missing provider
 pred validIgnoringUses[r : Resolution, m : set Bundle] { mandatoryResolved[r, m] }

@@ -16,6 +16,8 @@ import java.util.Map;
 
 import org.eclipse.osgi.technology.resolver.testsuite.DefaultResolveContext;
 import org.osgi.framework.namespace.BundleNamespace;
+import org.osgi.framework.namespace.HostNamespace;
+import org.osgi.framework.namespace.IdentityNamespace;
 import org.osgi.framework.namespace.PackageNamespace;
 import org.osgi.resource.Capability;
 import org.osgi.resource.Requirement;
@@ -31,9 +33,11 @@ class Matching {
 
     final DefaultResolveContext context;
     final Map<Capability, String> exports = new IdentityHashMap<>();
+    final Map<Capability, String> provides = new IdentityHashMap<>();
     final Map<Resource, String> bundles = new IdentityHashMap<>();
     private final Map<ImportSpec, Requirement> imports = new IdentityHashMap<>();
     private final Map<RequireSpec, Requirement> requires = new IdentityHashMap<>();
+    private final Map<NeedSpec, Requirement> needs = new IdentityHashMap<>();
 
     Matching(AlloyWorld world) {
         List<Resource> available = new ArrayList<>();
@@ -44,6 +48,10 @@ class Matching {
             // the builder adds one capability or requirement per step, in the order of the steps
             relate(b.exports, resource.getCapabilities(PackageNamespace.PACKAGE_NAMESPACE), (e, c) -> exports.put(c, e.atom()));
             relate(b.imports, resource.getRequirements(PackageNamespace.PACKAGE_NAMESPACE), imports::put);
+            relate(b.provides, resource.getCapabilities(null).stream().filter(c -> generic(c.getNamespace())).toList(),
+                    (s, c) -> provides.put(c, s.atom()));
+            relate(b.needs, resource.getRequirements(null).stream().filter(q -> generic(q.getNamespace())).toList(),
+                    needs::put);
             relate(b.requires, resource.getRequirements(BundleNamespace.BUNDLE_NAMESPACE), requires::put);
         }
         context = new DefaultResolveContext(available, List.of(), List.of());
@@ -60,6 +68,20 @@ class Matching {
 
     Requirement requirement(ImportSpec i) {
         return imports.get(i);
+    }
+
+    // the namespaces that have dedicated rules in the model
+    private static boolean generic(String namespace) {
+        return !List.of(PackageNamespace.PACKAGE_NAMESPACE, BundleNamespace.BUNDLE_NAMESPACE,
+                HostNamespace.HOST_NAMESPACE, IdentityNamespace.IDENTITY_NAMESPACE).contains(namespace);
+    }
+
+    Requirement requirement(NeedSpec q) {
+        return needs.get(q);
+    }
+
+    boolean effective(NeedSpec q) {
+        return context.isEffective(needs.get(q));
     }
 
     Requirement requirement(RequireSpec q) {
