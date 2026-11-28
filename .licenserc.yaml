@@ -55,3 +55,9 @@ header:
     - 'extensions/hash.checker/src/test/resources/**'
 
   comment: always
+
+  language:
+    Alloy:
+      extensions:
+        - '.als'
+      comment_style_id: SlashAsterisk

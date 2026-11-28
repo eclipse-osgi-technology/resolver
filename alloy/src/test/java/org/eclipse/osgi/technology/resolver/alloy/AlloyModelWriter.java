@@ -48,28 +48,28 @@ class AlloyModelWriter {
 
         sb.append("\nfact {\n");
         for (BundleSpec b : world.bundles) {
-            sb.append('\t').append(set(b.atom + ".exports", b.exports.stream().map(ExportSpec::atom).toList()))
+            sb.append("    ").append(set(b.atom + ".exports", b.exports.stream().map(ExportSpec::atom).toList()))
                     .append('\n');
-            sb.append('\t').append(set(b.atom + ".imports", b.imports.stream().map(ImportSpec::atom).toList()))
+            sb.append("    ").append(set(b.atom + ".imports", b.imports.stream().map(ImportSpec::atom).toList()))
                     .append('\n');
-            sb.append('\t').append(set(b.atom + ".requires", b.requires.stream().map(RequireSpec::atom).toList()))
+            sb.append("    ").append(set(b.atom + ".requires", b.requires.stream().map(RequireSpec::atom).toList()))
                     .append('\n');
             for (RequireSpec q : b.requires) {
-                sb.append('\t').append(set(q.atom() + ".matches", matches(world, q))).append('\n');
+                sb.append("    ").append(set(q.atom() + ".matches", matches(world, q))).append('\n');
             }
             for (ExportSpec e : b.exports) {
-                sb.append('\t').append(e.atom()).append(".pkg = ").append(AlloyWorld.pkg(e.pkg())).append('\n');
-                sb.append('\t').append(set(e.atom() + ".uses", e.uses().stream().map(AlloyWorld::pkg).toList()))
+                sb.append("    ").append(e.atom()).append(".pkg = ").append(AlloyWorld.pkg(e.pkg())).append('\n');
+                sb.append("    ").append(set(e.atom() + ".uses", e.uses().stream().map(AlloyWorld::pkg).toList()))
                         .append('\n');
             }
             for (ImportSpec i : b.imports) {
-                sb.append('\t').append(i.atom()).append(".pkg = ").append(AlloyWorld.pkg(i.pkg())).append('\n');
-                sb.append('\t').append(set(i.atom() + ".matches", matches(world, i))).append('\n');
+                sb.append("    ").append(i.atom()).append(".pkg = ").append(AlloyWorld.pkg(i.pkg())).append('\n');
+                sb.append("    ").append(set(i.atom() + ".matches", matches(world, i))).append('\n');
             }
         }
         List<String> reexported = world.bundles.stream().flatMap(b -> b.requires.stream())
                 .filter(RequireSpec::reexport).map(RequireSpec::atom).toList();
-        sb.append('\t').append(reexported.isEmpty() ? "no Reexported" : "Reexported = " + String.join(" + ", reexported))
+        sb.append("    ").append(reexported.isEmpty() ? "no Reexported" : "Reexported = " + String.join(" + ", reexported))
                 .append('\n');
         sb.append("}\n\n");
 
