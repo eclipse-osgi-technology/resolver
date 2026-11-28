@@ -45,6 +45,7 @@
     <module>verifier</module>
     <module>test-suite</module>
     <module>felix-resolver</module>
+    <module>alloy</module>
     <module>coverage</module>
   </modules>
 
