@@ -16,6 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import edu.mit.csail.sdg.alloy4.A4Reporter;
@@ -36,23 +38,30 @@ class AlloyRunner {
     /** The system property with the directory the models are dumped to. */
     static final String DUMP_PROPERTY = "alloy.dump";
 
+    private static final List<String> MODEL_FILES = List.of("resolver.als", "module_layer.als");
+
     private static final String VIRTUAL_DIR = "/alloy-model/";
 
     private final Module module;
 
     AlloyRunner(String name, String model) {
         try {
-            String core = readCore();
+            Map<String, String> core = new LinkedHashMap<>();
+            for (String file : MODEL_FILES) {
+                core.put(file, read(file));
+            }
             String dump = System.getProperty(DUMP_PROPERTY);
             if (dump != null) {
                 Path dir = Path.of(dump);
                 Files.createDirectories(dir);
-                Files.writeString(dir.resolve("osgi.als"), core, StandardCharsets.UTF_8);
+                for (Map.Entry<String, String> e : core.entrySet()) {
+                    Files.writeString(dir.resolve(e.getKey()), e.getValue(), StandardCharsets.UTF_8);
+                }
                 Files.writeString(dir.resolve(name + ".als"), model, StandardCharsets.UTF_8);
             }
             // Alloy reads the files from this map before it looks at the file system
             Map<String, String> files = new HashMap<>();
-            files.put(Util.canon(VIRTUAL_DIR + "osgi.als"), core);
+            core.forEach((file, content) -> files.put(Util.canon(VIRTUAL_DIR + file), content));
             files.put(Util.canon(VIRTUAL_DIR + name + ".als"), model);
             module = CompUtil.parseEverything_fromFile(A4Reporter.NOP, files, VIRTUAL_DIR + name + ".als");
         } catch (IOException e) {
@@ -62,8 +71,8 @@ class AlloyRunner {
         }
     }
 
-    private static String readCore() throws IOException {
-        try (InputStream in = AlloyRunner.class.getResourceAsStream("/osgi.als")) {
+    private static String read(String file) throws IOException {
+        try (InputStream in = AlloyRunner.class.getResourceAsStream("/" + file)) {
             return new String(in.readAllBytes(), StandardCharsets.UTF_8);
         }
     }

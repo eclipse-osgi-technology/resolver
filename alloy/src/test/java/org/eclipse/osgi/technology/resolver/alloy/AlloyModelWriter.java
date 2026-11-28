@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Writes the scenario of an {@link AlloyWorld} as an Alloy module that opens
- * {@code osgi.als}.
+ * {@code resolver.als} and {@code module_layer.als}.
  */
 class AlloyModelWriter {
 
@@ -26,7 +26,7 @@ class AlloyModelWriter {
         StringBuilder sb = new StringBuilder();
         sb.append("// Generated for: ").append(title).append("\n");
         world.descriptions.forEach(d -> sb.append("//   ").append(d).append('\n'));
-        sb.append("open osgi\n\n");
+        sb.append("open resolver\nopen module_layer\n\n");
 
         List<String> pkgs = new ArrayList<>();
         for (BundleSpec b : world.bundles) {

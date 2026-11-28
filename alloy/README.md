@@ -16,7 +16,7 @@ The language reference is at <https://alloytools.org/documentation.html>.
 
 ## How it works
 
-The module is a Cucumber binding like [felix-resolver](../felix-resolver), but the "resolver" is the Alloy model `src/test/resources/osgi.als`.
+The module is a Cucumber binding like [felix-resolver](../felix-resolver), but the "resolver" is the Alloy model in `src/test/resources` (`resolver.als` and `module_layer.als`).
 It uses the feature files of the test-suite and its own steps in `org.eclipse.osgi.technology.resolver.alloy`.
 
 - Steps that describe bundles record them in `AlloyWorld`.
@@ -34,7 +34,7 @@ mvn -pl alloy -am verify -Dtest=RunCucumberTest -Dsurefire.failIfNoSpecifiedTest
 ```
 
 The models are passed to Alloy as strings, nothing is written to disk.
-To inspect them, set the system property `alloy.dump` to a directory (relative paths are relative to the module), each scenario is then written as `<feature>-<line>.als` next to a copy of `osgi.als`:
+To inspect them, set the system property `alloy.dump` to a directory (relative paths are relative to the module), each scenario is then written as `<feature>-<line>.als` next to a copy of the model files:
 
 ```
 mvn -pl alloy -am verify -Dtest=RunCucumberTest -Dsurefire.failIfNoSpecifiedTests=false -Dalloy.dump=target/alloy
@@ -44,5 +44,5 @@ The dumped files can be opened in the Alloy GUI (`java -jar org.alloytools.alloy
 
 ## How to extend
 
-- New rules go into `osgi.als` and get the next rule number in a comment.
+- New rules go into the fitting model file and get the next rule number in a comment.
 - To support a step, replace its `world.unsupported(...)` in `BundleSteps` or `ResolveSteps` by code that records it, and extend `AlloyModelWriter` if the model needs new atoms.
